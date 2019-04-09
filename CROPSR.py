@@ -1,20 +1,17 @@
 #!/usr/bin/env python3
-# Written by: Hans Müller Paul
+# Written by: Hans Müller Paul and Dave Istanto
 #                           NOTES:
 
 
 ### Importing required libraries
 import argparse
 import datetime
-import gffutils
-import json
 import math
 import numpy as np
 import pandas as pd
 import re
-import subprocess
 import sys
-from os import path,remove
+from os import path
 
 ### Defining the arguments
 parser = argparse.ArgumentParser()
@@ -22,14 +19,14 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-f', '--fasta', required=True, dest='f', 
                     help='[required] path to input file in FASTA format'
                     )
-# parser.add_argument('-g', '--gff', required=True, dest='g', 
-#                     help='[required] path to input file in GFF format'
-#                     )
-parser.add_argument('-o', '--output', dest='o', default='output.txt',
+parser.add_argument('-g', '--gff', required=True, dest='g', 
+                    help='[required] path to input file in GFF format'
+                    )
+parser.add_argument('-o', '--output', dest='o', default='output.xlsx',
                     help='path to output file'
                     )
-parser.add_argument('-l', '--length', metavar='', dest='l', type=int, default=23,
-                    help='length of the gRNA sequence, default = 23'
+parser.add_argument('-l', '--length', metavar='', dest='l', type=int, default=20,
+                    help='length of the gRNA sequence, default = 20'
                     )
 parser.add_argument('-L', '--flanking', metavar='', dest='L', type=int, default=500,
                     help='length of flanking region for verification, default = 500'
@@ -40,11 +37,14 @@ parser.add_argument('--cas9', action='store_true',
 parser.add_argument('--cpf1', action='store_true',
                     help='specifies that design will be made for the Cpf1 CRISPR system'
                     )
+parser.add_argument('--CUDA', action='store_true',
+                    help='runs processing steps utilizing the GPU instead of CPU where possible'
+                    )
 # parser.add_argument('--full', action='store_true',
 #                     help='generates an output file containing all sgRNAs. WARNING: OUTPUT FILE MAY BE LARGE'
 #                     )
 parser.add_argument('-v', '--verbose', action='store_true',
-                    help='prints each step of each iteration (for debugging)'
+                    help='prints visual indicators for each iteration'
                     )
 
 args = parser.parse_args()
@@ -93,7 +93,7 @@ class CRISPR:
     #     return genomic_region
 
     def __get_id(self):
-        return f'[{self.type}]{self.chr}.({self.location[0]}:{self.location[1]})'
+        return f'[{self.type}]{self.chr}.{self.location[0]}:{self.location[1]}'
 
     def __doench_score(self,full_sequence):
         '''
@@ -255,7 +255,7 @@ class CRISPR:
         '''
         Logistic regression module to calculate the score for a particular guide sequence
         '''
-        doench_score = math.pow(1 - math.exp(-(intersect + score_sum)),-1)
+        doench_score = math.pow(1 + math.exp(-(intersect + score_sum)),-1)
         return doench_score
 
 
@@ -284,23 +284,33 @@ def import_fasta_file(fasta):
 
 def import_gff_file(gff):
     '''
-    imports and formats a genome annotation file in gff3 format for feature identification
+    imports and formats a genome annotation file in the GFF format for use
     '''
-    if path.exists(str(f'{gff[::-5]}.db')):
-        featuredb = gffutils.FeatureDB(str(f'{gff[::-5]}.db'))
-        if args.verbose:
-            print(f'Feature database successfully imported for {gff}')
-        return featuredb
-    else:
-        featuredb = gffutils.create_db(gff,
-                                        str(f'{gff[::-5]}.db'),
-                                        merge_strategy="create_unique",
-                                        keep_order=True)
-        featuredb = gffutils.helpers.sanitize_gff_db(featuredb)
-        gffutils.FeatureDB(featuredb)
-        if args.verbose:
-            print(f'Feature database successfully generated from {gff}')
-        return featuredb
+    start_index = 0
+    with open(gff,"r") as raw_gff:
+        gff_lines = raw_gff.readlines()
+        for index in range(len(gff_lines)):
+            if ("##" not in gff_lines[index]):
+                start_index = index
+                break
+    col_names = ["sequence", "source", "feature", "start", "end", "score", "strand", "phase", "attributes"]
+    gff_df = pd.read_csv(gff, sep='\t', skiprows = start_index, header = None, names = col_names)
+    return gff_df
+
+
+def retrieve_features_by_position(dataframe, chromosome, pos):
+    '''
+    searches a gff dataframe for all the genomic features at a given chromosome
+    and position
+    '''
+    chrom_bool = dataframe["sequence"] == chromosome
+    start_bool = dataframe["start"] < pos
+    end_bool = dataframe["end"] > pos
+    gff_df2 = dataframe[start_bool & end_bool & chrom_bool]
+    feat = gff_df2["feature"].tolist()
+    att = gff_df2["attributes"].tolist()
+    mapped = list(zip(feat, att))
+    return mapped
 
 
 def find_PAM_site(target,input_sequence):
@@ -352,17 +362,18 @@ def create_dataframe():
                 'cutsite',          # INT
                 'strand',           # CAT
                 'on_site_score',    # FLOAT
-                'off_site_score'    # FLOAT
+                'off_site_score',   # FLOAT
+                'features'          # LIST
                 ]
     df = pd.DataFrame(columns=df_cols)
-    df.set_index('crispr_id', inplace=True)
+    # df.set_index('crispr_id', inplace=True)
     '''
     implement memory optimization by assigning appropriate dtype
     '''
     return df
 
 
-def add_to_dataframe(dataframe, guide_id, system, sequence, chromosome, start_location,
+def add_to_dataframe(dataframe, gff_dataframe, guide_id, system, sequence, chromosome, start_location,
                     end_location, cutsite, strand, on_site_score, off_site_score):
     '''
     adds formatted data to fill the rows of the dataframe containing
@@ -377,61 +388,134 @@ def add_to_dataframe(dataframe, guide_id, system, sequence, chromosome, start_lo
                         cutsite,
                         strand,
                         on_site_score,
-                        off_site_score]) #,
-                        # dtype=['object',
-                        # 'category',
-                        # 'object',
-                        # 'category',
-                        # 'int64',
-                        # 'int64',
-                        # 'int64',
-                        # 'category',
-                        # 'float64',
-                        # 'float64'])
-    return dataframe.append(data_line, verify_integrity=True, ignore_index=True)
+                        off_site_score,
+                        retrieve_features_by_position(gff_dataframe,chromosome,cutsite)],
+                        index=dataframe.columns)
+    dataframe = dataframe.append(data_line, ignore_index=True)
+    # print(f'dataframe = {dataframe}')
+    return dataframe
 
 
-# def get_feature_by_location(sgrna,feature_db):
-#     feat = feature_db.region(f'{sgrna.chr}:{sgrna.location[0]}-{sgrna.location[1]}')
-#     for item in feat:
-#         feat_list=(item.feature.seqid,
-#         item.feature.featuretype,
-#         item.feature.frame)
-#         return feat_list
+# def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█'):
+#     '''
+#     Call in a loop to create terminal progress bar
+#     @params:
+#         iteration   - Required  : current iteration (Int)
+#         total       - Required  : total iterations (Int)
+#         prefix      - Optional  : prefix string (Str)
+#         suffix      - Optional  : suffix string (Str)
+#         decimals    - Optional  : positive number of decimals in percent complete (Int)
+#         length      - Optional  : character length of bar (Int)
+#         fill        - Optional  : bar fill character (Str)
+#     '''
+#     percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+#     filledLength = int(length * iteration // total)
+#     bar = fill * filledLength + '-' * (length - filledLength)
+#     print('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix), end = '\r')
+#     # Print New Line on Complete
+#     if iteration == total: 
+#         print()
 
 
-def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█'):
-    '''
-    Call in a loop to create terminal progress bar
-    @params:
-        iteration   - Required  : current iteration (Int)
-        total       - Required  : total iterations (Int)
-        prefix      - Optional  : prefix string (Str)
-        suffix      - Optional  : suffix string (Str)
-        decimals    - Optional  : positive number of decimals in percent complete (Int)
-        length      - Optional  : character length of bar (Int)
-        fill        - Optional  : bar fill character (Str)
-    '''
-    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
-    filledLength = int(length * iteration // total)
-    bar = fill * filledLength + '-' * (length - filledLength)
-    print('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix), end = '\r')
-    # Print New Line on Complete
-    if iteration == total: 
-        print()
+def design_guide(list_of_PAM_locations,dataframe,gff_dataframe,system,strand,key,value):
+    cas9_count = 0
+    cpf1_count = 0
+    for target in list_of_PAM_locations:
+        ''' designing guide from PAM site '''
+
+        if system == 'cas9':
+            pam_location = (target[0],target[0]+2)
+            cas9_count =+ 1
+            if strand == 'sense':
+                pam_site = PAM(pam_location,key,'cas9')
+                sgrna_position = (pam_site.location[0]-(args.l+1),pam_site.location[0]-1)
+                five_prime = sgrna_position[0]
+                three_prime = sgrna_position[1]
+                cutsite = three_prime-3
+            elif strand == 'antisense':
+                pam_site = PAM(pam_location[::-1],key,'cas9',False)
+                sgrna_position = (pam_site.location[0]+(args.l+1),pam_site.location[0]+1)
+                five_prime = sgrna_position[1]
+                three_prime = sgrna_position[0]
+                cutsite = three_prime+3
+
+        elif system == 'cpf1':
+            pam_location = (target[0],target[0]+3)
+            cpf1_count =+ 1
+            if strand == 'sense':
+                pam_site = PAM(pam_location,key,'cpf1')
+                sgrna_position = (pam_site.location[1]+1,pam_site.location[1]+(args.l+1))
+                five_prime = sgrna_position[0]
+                three_prime = sgrna_position[1]
+                cutsite = three_prime-5 # please remember to correct this
+            elif strand == 'antisense':
+                pam_site = PAM(pam_location[::-1],key,'cpf1',False)
+                sgrna_position = (pam_site.location[1]-1,pam_site.location[1]-(args.l+1))
+                five_prime = sgrna_position[1]
+                three_prime = sgrna_position[0]
+                cutsite = three_prime+5 # please remember to correct this
+
+        if sgrna_position[0] >= 0 and sgrna_position[0] <= len(value) and sgrna_position[1] >= 0 and sgrna_position[1] <= len(value):
+            sgrna_sequence = value[five_prime:three_prime]
+            sgrna_sequence = get_reverse_complement(sgrna_sequence)
+            sgrna_full_sequence = get_gRNA_sequence(value[five_prime-5:three_prime+5])
+            sgrna_sequence = get_gRNA_sequence(sgrna_sequence)
+            sgrna_oss = off_site_score(sgrna_sequence,pam_site.id,args.f)
+            sgrna = CRISPR(sgrna_sequence,sgrna_full_sequence,sgrna_position,cutsite,pam_site.chr,pam_site.type,pam_site.strand, sgrna_oss)
+            cas9_count = cas9_count + 1
+            dataframe = add_to_dataframe(dataframe,
+                            gff_dataframe,
+                            sgrna.id,
+                            sgrna.type,
+                            sgrna.sequence,
+                            sgrna.chr,
+                            sgrna.location[0],
+                            sgrna.location[1],
+                            sgrna.cutsite,
+                            sgrna.strand,
+                            sgrna.ds,
+                            sgrna.off)
+    return dataframe
 
 
 def main():
     if not args.cas9 and not args.cpf1:
         sys.exit('Please select at least one CRISPR system: Cas9 or Cpf1')
+    
     if args.verbose:
-        print(args)
+        print(f"""
+################################################################################
+##                                                                            ##
+##                                                                            ##
+##          .o88b.   d8888b.    .d88b.    d8888b.   .d8888.   d8888b.         ##
+##         d8P  Y8   88  `8D   .8P  Y8.   88  `8D   88'  YP   88  `8D         ##
+##         8P        88oobY'   88    88   88oodD'   `8bo.     88oobY'         ##
+##         8b        88`8b     88    88   88ººº       `Y8b.   88`8b           ##
+##         Y8b  d8   88 `88.   `8b  d8'   88        db   8D   88 `88.         ##
+##          `Y88P'   88   YD    `Y88P'    88        `8888Y'   88   YD         ##
+##                                                                            ##
+##                                                   Version: 0.0.1(a)        ##
+##                                                                            ##
+################################################################################
+U.S. Dept. of Energy's Center for Advanced Bioenergy and Bioproducts Innovation
+University of Illinois at Urbana-Champaign
 
+        You are currently utilizing the following settings:
+
+        Path to genome file in FASTA format:            {args.f}
+        Path to annotation file in GFF format:          {args.g}
+        Path to output file:                            {args.o}
+        Length of the gRNA sequence:                    {args.l}
+        Length of flanking region for verification:     {args.L}
+        Designing for the Cas9 CRISPR system:           {args.cas9}
+        Designing for the Cpf1 CRISPR system:           {args.cpf1}
+        Running on GPU instead of CPU (when possible):  {args.CUDA}
+""")
+        # outputting all files:                         {args.full}
 
     ### Import genome files
     fasta_file = import_fasta_file(args.f)
-    # gff_file = import_gff_file(args.g)
-    # gff_db = gffutils.FeatureDB(gff_file)
+    gff_df = import_gff_file(args.g)
 
 
     ### Locate PAMs by nuclease type
@@ -442,179 +526,61 @@ def main():
             Please wait, this may take a while...
             ''')
 
-
-    cas9_count = 0
-    cpf1_count = 0
-
-
     CRISPR_dataframe = create_dataframe()
 
     if args.cas9:
-        invalid_cas9_targets = []
         for k,v in fasta_file.items():
             # + strand
             motif = re.compile(r'(?=.GG)')
             cas9_target_list = find_PAM_site(motif,v)
-            for target in cas9_target_list:
-                ''' designing guide from PAM site '''
-                pam_location = (target[0]+1,target[0]+3)
-                pam_site = PAM(pam_location,k,'cas9')
-                sgrna_position = (pam_site.location[0]-(args.l+1),pam_site.location[0]-1)
-                if sgrna_position[0] >= 0 and sgrna_position[0] <= len(v) and sgrna_position[1] >= 0 and sgrna_position[1] <= len(v):
-                    sgrna_sequence = v[sgrna_position[0]:sgrna_position[1]]
-                    sgrna_sequence = get_reverse_complement(sgrna_sequence)
-                    sgrna_full_sequence = get_gRNA_sequence(v[sgrna_position[0]-5:sgrna_position[1]+5])
-                    sgrna_sequence = get_gRNA_sequence(sgrna_sequence)
-                    sgrna_oss = off_site_score(sgrna_sequence,pam_site.id,args.f)
-                    sgrna = CRISPR(sgrna_sequence,sgrna_full_sequence,sgrna_position,sgrna_position[1]-3,pam_site.chr,pam_site.type,pam_site.strand, sgrna_oss)
-                    cas9_count = cas9_count + 1
-                    # feat = gff_file.region(seqid=sgrna.chr, start=sgrna.location[0], end=sgrna.location[1])
-                    # feat = get_feature_by_location(sgrna,gff_db)
-                    # print(f'''{sgrna.id}:{sgrna.sequence}
-                    
-                    # {feat}
-                    
-                    # ''')
-                    ''' inclusion of guides in dataframe '''
-                    add_to_dataframe(CRISPR_dataframe,
-                                    sgrna.id,
-                                    sgrna.type,
-                                    sgrna.sequence,
-                                    sgrna.chr,
-                                    sgrna.location[0],
-                                    sgrna.location[1],
-                                    sgrna.cutsite,
-                                    sgrna.strand,
-                                    sgrna.ds,
-                                    sgrna.off)
-                else:
-                    invalid_cas9_targets.append(pam_site)
+
             # - strand
             motif = re.compile(r'(?=CC.)')
             cas9_target_list2 = find_PAM_site(motif,v)
-            for target in cas9_target_list2:
-                pam_location = (target[0]+1,target[0]+3)
-                pam_site = PAM(pam_location[::-1],k,'cas9',False)
-                sgrna_position = (pam_site.location[0]+(args.l+1),pam_site.location[0]+1)
-                if sgrna_position[0] >= 0 and sgrna_position[0] <= len(v) and sgrna_position[1] >= 0 and sgrna_position[1] <= len(v):
-                    sgrna_sequence = v[sgrna_position[1]:sgrna_position[0]]
-                    sgrna_sequence = get_gRNA_sequence(sgrna_sequence)
-                    sgrna_full_sequence = get_gRNA_sequence(v[sgrna_position[1]-5:sgrna_position[0]+5])
-                    sgrna_oss = off_site_score(sgrna_sequence,pam_site.id,args.f)
-                    sgrna = CRISPR(sgrna_sequence,sgrna_full_sequence,sgrna_position,sgrna_position[1]-3,pam_site.chr,pam_site.type,pam_site.strand, sgrna_oss)
-                    cas9_count = cas9_count + 1
-                    print(sgrna.id,':',sgrna.sequence)
-                    add_to_dataframe(CRISPR_dataframe,
-                                    sgrna.id,
-                                    sgrna.type,
-                                    sgrna.sequence,
-                                    sgrna.chr,
-                                    sgrna.location[0],
-                                    sgrna.location[1],
-                                    sgrna.cutsite,
-                                    sgrna.strand,
-                                    sgrna.ds,
-                                    sgrna.off)
-                else:
-                    invalid_cas9_targets.append(pam_site)
+
+            df1 = design_guide(cas9_target_list,CRISPR_dataframe,gff_df,'cas9','sense',k,v)
+            CRISPR_dataframe = pd.concat([CRISPR_dataframe,df1],ignore_index=True)
+
+            df2 = design_guide(cas9_target_list2,CRISPR_dataframe,gff_df,'cas9','antisense',k,v)
+            CRISPR_dataframe = pd.concat([CRISPR_dataframe,df2],ignore_index=True)
+
             if args.verbose:
                 print (f'''
                 {len(cas9_target_list + cas9_target_list2)} Cas9 PAM sites were found on {k[1::]}
                 ''')
 
+
     if args.cpf1:
-        invalid_cpf1_targets = []
         for k,v in fasta_file.items():
         # + strand
             motif = re.compile(r'(?=TTT.)')
             cpf1_target_list = find_PAM_site(motif,v)
-            for target in cpf1_target_list:
-                pam_location = (target[0]+1,target[0]+4)
-                pam_site = PAM(pam_location,k,'cpf1')
-                del pam_location
-                sgrna_position = (pam_site.location[1]+1,pam_site.location[1]+(args.l+1))
-                if sgrna_position[0] >= 0 and sgrna_position[0] <= len(v) and sgrna_position[1] >= 0 and sgrna_position[1] <= len(v):
-                    sgrna_sequence = v[sgrna_position[0]:sgrna_position[1]]
-                    sgrna_sequence = get_gRNA_sequence(sgrna_sequence)
-                    sgrna_full_sequence = get_gRNA_sequence(v[sgrna_position[0]-5:sgrna_position[1]+5])
-                    sgrna_oss = off_site_score(sgrna_sequence,pam_site.id,args.f)
-                    sgrna = CRISPR(sgrna_sequence,sgrna_full_sequence,sgrna_position,sgrna_position[1]-3,pam_site.chr,pam_site.type,pam_site.strand,sgrna_oss)
-                    cpf1_count = cpf1_count + 1
-                    print(sgrna.id,':',sgrna.sequence)
-                    add_to_dataframe(CRISPR_dataframe,
-                                    sgrna.id,
-                                    sgrna.type,
-                                    sgrna.sequence,
-                                    sgrna.chr,
-                                    sgrna.location[0],
-                                    sgrna.location[1],
-                                    sgrna.cutsite,
-                                    sgrna.strand,
-                                    sgrna.ds,
-                                    sgrna.off)
-                else:
-                    invalid_cpf1_targets.append(pam_site)
 
         # - strand
             motif = re.compile(r'(?=.AAA)')
             cpf1_target_list2 = find_PAM_site(motif,v)
-            for target in cpf1_target_list2:
-                pam_location = (target[0]+1,target[0]+4)
-                pam_site = PAM(pam_location[::-1],k,'cpf1',False)
-                del pam_location
-                sgrna_position = (pam_site.location[1]-1,pam_site.location[1]-(args.l+1))
-                if sgrna_position[0] >= 0 and sgrna_position[0] <= len(v) and sgrna_position[1] >= 0 and sgrna_position[1] <= len(v):
-                    sgrna_sequence = v[sgrna_position[1]:sgrna_position[0]]
-                    sgrna_sequence = get_gRNA_sequence(sgrna_sequence)
-                    sgrna_full_sequence = get_gRNA_sequence(v[sgrna_position[1]-5:sgrna_position[0]+5])
-                    sgrna_oss = off_site_score(sgrna_sequence,pam_site.id,args.f)
-                    sgrna = CRISPR(sgrna_sequence,sgrna_full_sequence,sgrna_position,sgrna_position[1]-3,pam_site.chr,pam_site.type,pam_site.strand,sgrna_oss)
-                    cpf1_count = cpf1_count + 1
-                    print(sgrna.id,':',sgrna.sequence)
-                    add_to_dataframe(CRISPR_dataframe,
-                                    sgrna.id,
-                                    sgrna.type,
-                                    sgrna.sequence,
-                                    sgrna.chr,
-                                    sgrna.location[0],
-                                    sgrna.location[1],
-                                    sgrna.cutsite,
-                                    sgrna.strand,
-                                    sgrna.ds,
-                                    sgrna.off)
-                else:
-                    invalid_cpf1_targets.append(pam_site)
+
+            df3 = design_guide(cpf1_target_list,CRISPR_dataframe,gff_df,'cpf1','sense',k,v)
+            CRISPR_dataframe = pd.concat([CRISPR_dataframe,df3],ignore_index=True)
+
+            df4 = design_guide(cpf1_target_list2,CRISPR_dataframe,gff_df,'cpf1','antisense',k,v)
+            CRISPR_dataframe = pd.concat([CRISPR_dataframe,df4],ignore_index=True)
+
             if args.verbose:
                 print (f'''
                 {len(cpf1_target_list + cpf1_target_list2)} Cpf1 PAM sites were found on {k[1::]}
                 ''')
 
-    ### Gather info on each target motif
+    CRISPR_dataframe.set_index('crispr_id', inplace=True)
+    if args.verbose:
+        print(CRISPR_dataframe)
 
-    if args.cas9:
-        print(f'a total of {cas9_count} gRNAs was designed for Cas9')
-    if args.cpf1:
-        print(f'a total of {cpf1_count} gRNAs was designed for Cpf1')
+    # ### WRITE TO OUTPUT FILE
+    CRISPR_dataframe.to_csv(args.o,header=True,sep='\t')
 
-
-    """
-    ### WRITE TO OUTPUT FILE (add to head)
-
-    output_dict = {
-    "Target genome": 'Sorghum Bicolor',
-    "Total Cas9 gRNAs": len(cas9_guides),
-    # "Total Cpf1 gRNAs": len(cpf1_guides),
-    "Generated with": "$software name",
-    "Date": str(datetime.datetime.now()),
-    "Cas9 sgRNA Info": Cas9_guide_info,
-    # "Cpf1 sgRNA Info": Cpf1_guide_info
-    }
-    with open(args.o, 'w') as f:
-    json.dump(output_dict, f, indent=2)
-    """
-
-### CONFIRMATION MESSAGE
-    print(f'The output file has been generated at {args.o}')
+    ### CONFIRMATION MESSAGE
+    if args.verbose:
+        print(f'The output file has been generated at {args.o}')
 
 if __name__ == '__main__':
     main()
