@@ -9,6 +9,8 @@ import re
 import sys
 from multiprocessing import cpu_count, Pool
 import pandas as pd
+from numpy import vectorize
+from time import gmtime, strftime
 
 ### Defining the arguments
 parser = argparse.ArgumentParser()
@@ -74,6 +76,8 @@ def import_gff_file(gff):
     '''
     start_index = 0
     with open(gff,"r") as raw_gff:
+        if args.verbose:
+            print(f'Annotation file {gff} successfully imported')
         gff_lines = raw_gff.readlines()
         for index in range(len(gff_lines)):
             if ("##" not in gff_lines[index]):
@@ -81,6 +85,8 @@ def import_gff_file(gff):
                 break
     col_names = ["sequence", "source", "feature", "start", "end", "score", "strand", "phase", "attributes"]
     gff_df = pd.read_csv(gff, sep='\t', skiprows = start_index, header = None, names = col_names)
+    if args.verbose:
+        print(f'Annotation database successfully generated')
     return gff_df
 
 
@@ -319,15 +325,39 @@ def off_site_score(sequence, id, genome):
     return off_site
 
 
-def retrieve_features_by_position(gff_dataframe, chromosome, pos):
+# def retrieve_features_by_position(gff_dataframe,DF):
+#     '''
+#     searches a gff dataframe for all the genomic features at a given chromosome
+#     and position
+#     '''
+#     print(f'gff is {gff_dataframe["sequence"].dtype}')
+#     print(f'DF is {DF["chromosome"]}.dtype')
+#     print(f'cutsite is {DF["cutsite"]}.dtype')
+#     chrom_bool = gff_dataframe["sequence"] == DF['chromosome']
+#     # start_bool = gff_dataframe["start"] <= pos
+#     # end_bool = gff_dataframe["end"] >= pos
+#     within = DF['cutsite'] in range(gff_dataframe["start"],gff_dataframe["end"]+1)
+#     gff_df2 = gff_dataframe[chrom_bool and within]
+#     # gff_df2 = gff_dataframe[start_bool & end_bool & chrom_bool]
+#     feat = gff_df2["feature"].tolist()
+#     att = gff_df2["attributes"].tolist()
+#     mapped = list(zip(feat, att))
+#     return mapped
+
+
+def retrieve_features_by_position(gff_dataframe,DF):
     '''
     searches a gff dataframe for all the genomic features at a given chromosome
     and position
     '''
-    chrom_bool = gff_dataframe["sequence"] == chromosome
-    start_bool = gff_dataframe["start"] < pos
-    end_bool = gff_dataframe["end"] > pos
-    gff_df2 = gff_dataframe[start_bool & end_bool & chrom_bool]
+    zipped = list(zip(DF['chromosome'],DF['cutsite'].astype('int64')))
+    # for item in zipped:
+    # Boolean checks
+    chrom_bool = gff_dataframe["sequence"] == zipped[:][0]
+    within = zipped[:][1] in range(gff_dataframe["start"],gff_dataframe["end"]+1)    
+    # Generating a new series
+    gff_df2 = gff_dataframe[chrom_bool and within]
+    # gff_df2 = gff_dataframe[start_bool & end_bool & chrom_bool]
     feat = gff_df2["feature"].tolist()
     att = gff_df2["attributes"].tolist()
     mapped = list(zip(feat, att))
@@ -369,8 +399,8 @@ def fill_row(DF):
     DF['cutsite'] = vectorize(apply_cutsite)(DF['start_pos'],DF['end_pos'],DF['crispr_sys'])
     DF['on_site_score'] = vectorize(rs1_score)(DF['sequence'])
     DF['off_site_score'] = vectorize(apply_off_site)(DF['sequence'])
-    DF['features'] = vectorize(retrieve_features_by_position)(gff_df,DF['chromosome'],DF['cutsite'])
-    pd.to_numeric(DF, errors='coerce')
+    # DF['features'] = vectorize(retrieve_features_by_position)(gff_dataframe,DF['chromosome'],DF['cutsite'])
+    # pd.to_numeric(DF, errors='coerce')
     return DF
 
 
@@ -473,7 +503,6 @@ University of Illinois at Urbana-Champaign
     fasta_file = import_fasta_file(args.f)
     gff_df = import_gff_file(args.g)
 
-
     ### Locate PAMs by nuclease type
     if args.verbose:
         print(f'''
@@ -500,7 +529,8 @@ University of Illinois at Urbana-Champaign
                 if pam_location[0] >= 0 and pam_location[0] <= len(sequence) and pam_location[1] >= 0 and pam_location[1] <= len(sequence):
                     shortseq = get_gRNA_sequence(sequence[pam_location[0]:pam_location[1]])
                     longseq = get_gRNA_sequence(sequence[pam_location[0]-5:pam_location[1]+5])
-                    crispr_guide = pd.Series((pam_location[0],pam_location[1],chromosome[1::],shortseq,longseq,'cas9','+'))
+                    crispr_guide = [pam_location[0],pam_location[1],chromosome[1::],shortseq,longseq,'cas9','+']
+                    # crispr_guide = pd.Series((pam_location[0],pam_location[1],chromosome[1::],shortseq,longseq,'cas9','+'))
                     Complete_dataset.append(crispr_guide)
 
             # - strand
@@ -511,7 +541,8 @@ University of Illinois at Urbana-Champaign
                 if pam_location[0] >= 0 and pam_location[0] <= len(sequence) and pam_location[1] >= 0 and pam_location[1] <= len(sequence):
                     shortseq = get_gRNA_sequence(get_reverse_complement(sequence[pam_location[0]:pam_location[1]]))
                     longseq = get_gRNA_sequence(get_reverse_complement(sequence[pam_location[0]-5:pam_location[1]+5]))
-                    crispr_guide = pd.Series((pam_location[1],pam_location[0],chromosome[1::],shortseq,longseq,'cas9','-'))
+                    crispr_guide = [pam_location[1],pam_location[0],chromosome[1::],shortseq,longseq,'cas9','-']
+                    # crispr_guide = pd.Series((pam_location[1],pam_location[0],chromosome[1::],shortseq,longseq,'cas9','-'))
                     Complete_dataset.append(crispr_guide)
 
             if args.verbose:
@@ -552,13 +583,15 @@ University of Illinois at Urbana-Champaign
         for i,item in enumerate(Complete_dataset):
             lesser_list.append((item))
             # print(lesser_list)
-            if len(lesser_list) == 500 or i == len(Complete_dataset)-1:
+            if len(lesser_list) == 5000 or i == len(Complete_dataset)-1:
                 # print (f'i = {i}')
-                # print(f'length of block: {len(lesser_list)}')
+                # print(f'Starting analysis on block of {len(lesser_list)} sequences')
                 CRIPSR_dataframe['raw'] = lesser_list
                 CRIPSR_dataframe.apply(preprocess_PAM_sites,axis=1)
                 CRIPSR_dataframe.apply(fill_row,axis=1)
-                # print(CRIPSR_dataframe.dtypes)
+                # CRIPSR_dataframe['features'] = retrieve_features_by_position(gff_df,CRIPSR_dataframe)
+                # print(CRIPSR_dataframe)
+                # CRIPSR_dataframe['features'] = vectorize(retrieve_features_by_position)(gff_df,CRIPSR_dataframe['chromosome'],CRIPSR_dataframe['cutsite'])
                 CRIPSR_dataframe.to_csv(args.o, header=False, index=False, mode='a+')
                 CRIPSR_dataframe = create_dataframe()
                 lesser_list = []
