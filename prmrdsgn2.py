@@ -32,7 +32,7 @@ parser.add_argument('-e', '--extension', metavar='', dest='e', type=int, default
                     help='number of bases from the start and end of the sequence to look for primers in, default = 100'
                     )
 parser.add_argument('-a', '--amplicon', metavar='', dest='a', type=int, default=1000,
-                    help='number of bases from the start and end of the sequence to look for primers in, default = 1000'
+                    help='expected length of the amplicon (for alignment), default = 1000'
                     )
 parser.add_argument('-s', '--short', metavar='', dest='s', type=int, default=20,
                     help='shortest acceptable primer, default = 20'
@@ -292,6 +292,9 @@ def main():
         remove(f'reverse_list.fa')
     if args.verbose:
         print(alignment_result)
+    
+    # with open(args.o, 'w') as outfile:
+    #     outfile.write(alignment_result)
 
 
     # Creating elements directly stored in output dictionary
