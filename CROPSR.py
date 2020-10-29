@@ -72,6 +72,7 @@ University of Illinois at Urbana-Champaign
         You are currently utilizing the following settings:
 
         Path to genome file in FASTA format:            {args.f}
+        Path to annotation file in GFF format:          {args.g}
         Path to output file:                            {args.o}
         Length of the gRNA sequence:                    {args.l}
         Length of flanking region for verification:     {args.L}
@@ -82,10 +83,9 @@ University of Illinois at Urbana-Champaign
             Prevotella spp. Cpf1:                       {args.cpf1}
         """)
 
-        # Path to annotation file in GFF format:          {args.g}
     ### Import genome files
     fasta_file = cropsr_functions.import_fasta_file(args.f)
-    gff_df = cropsr_functions.import_gff_file(args.g)
+    # gff_df = cropsr_functions.import_gff_file(args.g)
 
     ### Locate PAMs by nuclease type
     if args.verbose:
