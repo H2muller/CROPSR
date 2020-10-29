@@ -90,7 +90,6 @@ def create_dataframe():
                 'cutsite',          # INT
                 'strand',           # CAT
                 'on_site_score',    # FLOAT
-                'off_site_score',   # FLOAT
                 'features'          # LIST
                 ]
     df = DataFrame(columns=df_cols)
@@ -137,7 +136,7 @@ def rs1_score(sequence):
     seq = str(sequence).upper()
     seq = list(seq)
     matrix1  = zeros([len(sequence),4], dtype=int)
-    for item in enumerate(sequence):
+    for i, item in enumerate(sequence):
         if item == 'A':
             matrix1[i,0] = 1
         if item == 'T':
@@ -295,8 +294,8 @@ def retrieve_gff_helper(chrom, cutsite, gff_dataframe_csv):
     # Filter gff by input_chrom
     filtered_gff_df_1 = gff_dataframe[gff_dataframe['chromosome'] == chrom]
 
-    # Check for each row of gff_dataframe, if cutsite is between start and end, list feature
-
+    # Check for each row of gff_dataframe, if cutsite is between start and end, list features
+    # If source of GFF is phytozome, look for additional file
 
     # Use pandas filtering
     start_end_filter = (filtered_gff_df_1['start'] <= cutsite) & (filtered_gff_df_1['end'] <= cutsite)
@@ -371,7 +370,6 @@ def optimize_dataframe(DF):
     # DF['cutsite'] = pd.to_numeric(DF['cutsite'])
     #float
     DF['on_site_score'] = pd.to_numeric(DF['on_site_score'],downcast='float')
-    DF['off_site_score'] = pd.to_numeric(DF['off_site_score'],downcast='float')
     # category
     DF['crispr_sys'] = DF['crispr_sys'].astype('category')
     DF['chromosome'] = DF['chromosome'].astype('category')
