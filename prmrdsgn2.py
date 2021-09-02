@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-#  Written by: Hans Müller Paul and Jacob Heldenbrand
-
 # IMPORT LIBRARIES
 import argparse
 import datetime
@@ -25,9 +23,6 @@ parser.add_argument('-i', '--input', dest='i', required=True,
 parser.add_argument('-g', '--genome', dest='g', required=True, 
                     help='path to input genome file in FASTA format'
                     )
-# parser.add_argument('-n', '--number', metavar='', dest='n', type=int, default=5,
-#                     help='number of candidate primer pairs to pick, default = 5'
-#                     )
 parser.add_argument('-e', '--extension', metavar='', dest='e', type=int, default=100,
                     help='number of bases from the start and end of the sequence to look for primers in, default = 100'
                     )
@@ -102,7 +97,7 @@ class Primer:
     def get_primer_elements(self):
         return {"sequence": self.sequence,
                 "GC": round(self.GC_percentage, 2),
-                "Tm": round(self.Tm, 2)  # added round to display only 2 decimal points
+                "Tm": round(self.Tm, 2)
                 }
 
 
@@ -241,10 +236,6 @@ def main():
                 genome = formatted(genome)
                 if args.verbose:
                     print(f'Genome file {args.g} successfully formatted')
-        # from functions import generate_dictionary as gendict
-        # genome_dictionary = gendict(genome)
-        # if args.verbose:
-        #     print(f'The genome was successfully converted to a dictionary')
     else:
         sys.exit('Genome file does not exist at specified path')
 
@@ -292,33 +283,6 @@ def main():
         remove(f'reverse_list.fa')
     if args.verbose:
         print(alignment_result)
-    
-    # with open(args.o, 'w') as outfile:
-    #     outfile.write(alignment_result)
-
-
-    # Creating elements directly stored in output dictionary
-    # flat_primer_pair_info = []
-    # for i in filtered_primer_pairs:
-    #     flat_primer_pair_info.append(
-    #         {
-    #             "Forward primer": i[0].get_primer_elements(),
-    #             "Reverse primer": i[1].get_primer_elements()
-    #         }
-    #     )
-
-    # output_dict = {
-    #     "Target gene": name_tag,
-    #     "Genetic sequence": seq,
-    #     "Total primer pairs": len(flat_primer_pair_info),
-    #     "Generated with": "$software name",
-    #     "Date": str(datetime.datetime.now()),
-    #     "Primer Pair Info": flat_primer_pair_info
-    # }
-
-    # with open(args.o, 'w') as outfile:
-    #     json.dump(output_dict, outfile, indent=2)
-    # print(f'The output file has been generated at {args.o}')
 
 if __name__ == '__main__':
     main()
