@@ -1,129 +1,82 @@
 #!/usr/bin/env python3
 
 
-def generate_dictionary(input):
-    '''
-    Written by: Hans Müller Paul
-    '''
-    import itertools
-    dictionary = input.split()
-    dictionary = dict(itertools.zip_longest(*[iter(dictionary)] * 2, fillvalue=""))
-    return dictionary
+def one_base_matrix(sequence):
+    """
+    Generates a binary matrix for DNA/RNA sequence, where each column is a possible base
+    and each row is a position along the sequence. Matrix column order is A, T/U, C, G
+    """
+    # Import libraries
+    from numpy import zeros
+    # Function
+    seq = str(sequence).upper()
+    seq = list(seq)
+    matrix = zeros([len(sequence),4], dtype=int)
+    for i,item in enumerate(sequence):
+        if item == 'A':
+            matrix[i,0] = 1
+        if item == 'T':
+            matrix[i,1] = 1
+        if item == 'U':
+            matrix[i,1] = 1
+        if item == 'C':
+            matrix[i,2] = 1
+        if item == 'G':
+            matrix[i,3] = 1
+    return matrix
 
 
-def formatted(input_genome):
-    '''
-    Written by: Hans Müller Paul and Joao Paulo Gomes Viana
-    '''
-    import re
-    formatted = re.sub('\n','',input_genome)
-    formatted = re.sub('>', '\n>',formatted)
-    formatted = formatted[1:]
-    formatted = re.sub('([0-9]+)','\\1 \n',formatted)
-    return formatted
+def pairwise_matrix(sequence):
+    """
+    Generates a binary matrix for DNA/RNA sequence, where each column is a possible
+    pair of adjacent bases, and each row is a position along the sequence.
+    Matrix column order is AA, AT, AC, AG, TA, TT, TC, TG, CA, CT, CC, CG, GA, GT, GC, GG
+    """
+    # Import libraries
+    from numpy import zeros
+    # Function
+    sequence = sequence.replace('U','T')
+    pairwise_sequence = []
+    for i in range(len(sequence)):
+        if i < len(sequence)-1:
+            basepair = sequence[i]+sequence[i+1]
+            pairwise_sequence.append(basepair)
+    matrix = zeros([len(pairwise_sequence),16], dtype=int)
+    for i,item in enumerate(pairwise_sequence):
+        if item == 'AA':
+            matrix[i,0] = 1
+        if item == 'AT':
+            matrix[i,1] = 1
+        if item == 'AC':
+            matrix[i,2] = 1
+        if item == 'AG':
+            matrix[i,3] = 1
+        if item == 'TA':
+            matrix[i,4] = 1
+        if item == 'TT':
+            matrix[i,5] = 1
+        if item == 'TC':
+            matrix[i,6] = 1
+        if item == 'TG':
+            matrix[i,7] = 1
+        if item == 'CA':
+            matrix[i,8] = 1
+        if item == 'CT':
+            matrix[i,9] = 1
+        if item == 'CC':
+            matrix[i,10] = 1
+        if item == 'CG':
+            matrix[i,11] = 1
+        if item == 'GA':
+            matrix[i,12] = 1
+        if item == 'GT':
+            matrix[i,13] = 1
+        if item == 'GC':
+            matrix[i,14] = 1
+        if item == 'GG':
+            matrix[i,15] = 1
+    return matrix
 
-
-def import_fasta_file(fasta):
-    '''
-    imports and formats a genome file in the fasta format for use
-    '''
-    with open(fasta, 'r') as f:
-        myFASTA = f.read()
-        if args.verbose:
-            print(f'Genome file {fasta} successfully imported')
-        linecount = myFASTA.count('\n')
-        if 2 * myFASTA.count('>') != linecount + 1:
-            if args.verbose:
-                print('formatting genome')
-            myFASTA = formatted(myFASTA)
-            if args.verbose:
-                print(f'Genome file {fasta} successfully formatted')
-    genome_dictionary = generate_dictionary(myFASTA)
-    if args.verbose:
-        print(f'The genome was successfully converted to a dictionary')
-    return genome_dictionary
-
-
-def import_gff_file(gff):
-    from pandas import read_csv
-    '''
-    imports and formats a genome annotation file in the GFF format for use
-    '''
-    start_index = 0
-    with open(gff,"r") as raw_gff:
-        if args.verbose:
-            print(f'Annotation file {gff} successfully imported')
-        gff_lines = raw_gff.readlines()
-        for index in range(len(gff_lines)):
-            if ("##" not in gff_lines[index]):
-                start_index = index
-                break
-    col_names = ["chromosome", "source", "feature", "start", "end", "score", "strand", "phase", "attributes"]
-    gff_df = read_csv(gff, sep='\t', skiprows = start_index, header = None, names = col_names)
-    if args.verbose:
-        print(f'Annotation database successfully generated')
-    return gff_df
-
-
-def find_PAM_site(target,input_sequence):
-    '''
-    locates the target PAM motif in input sequence
-    '''
-    from re import finditer
-    PAM_site = [match.span() for match in finditer(target,input_sequence)]
-    return PAM_site
-
-
-def create_dataframe():
-    '''
-    creates a dataframe to store sgRNA information
-    '''
-    from pandas import DataFrame
-    df_cols = [
-                'crispr_id',        # STR
-                'crispr_sys',       # CAT
-                'sequence',         # STR
-                'long_sequence',    # STR
-                'chromosome',       # CAT
-                'start_pos',        # INT
-                'end_pos',          # INT
-                'cutsite',          # INT
-                'strand',           # CAT
-                'on_site_score',    # FLOAT
-                'features'          # LIST
-                ]
-    df = DataFrame(columns=df_cols)
-    return df
-
-
-def get_reverse_complement(input_sequence):
-    '''
-    converts a DNA sequence to its reverse complement
-    '''
-    complement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
-    bases = list(input_sequence)
-    bases = reversed([complement.get(base, base) for base in bases])
-    bases = ''.join(bases)
-    return bases
-
-
-def get_gRNA_sequence(input_sequence):
-    '''
-    converts a DNA sequence to its complimentary RNA sequence
-    '''
-    complement = {'A': 'U', 'C': 'G', 'G': 'C', 'T': 'A'}
-    RNA = list(input_sequence)
-    RNA = reversed([complement.get(base, base) for base in RNA])
-    RNA = ''.join(RNA)
-    return RNA
-
-
-def apply_cutsite(start_pos, end_pos, crispr_sys):
-    if crispr_sys == 'cas9':
-        cutsite = end_pos-3
-    elif crispr_sys == 'cpf1':
-        cutsite = end_pos-5 # this number is currently a placeholder
-    return cutsite
 
 
 def rs1_score(sequence):
@@ -131,68 +84,10 @@ def rs1_score(sequence):
     Generates a binary matrix for DNA/RNA sequence, where each column is a possible base
     and each row is a position along the sequence. Matrix column order is A, T/U, C, G
     """
+    # Import Libraries
     import math
-    from numpy import zeros, matmul, trace
-    seq = str(sequence).upper()
-    seq = list(seq)
-    matrix1  = zeros([len(sequence),4], dtype=int)
-    for i, item in enumerate(sequence):
-        if item == 'A':
-            matrix1[i,0] = 1
-        if item == 'T':
-            matrix1[i,1] = 1
-        if item == 'U':
-            matrix1[i,1] = 1
-        if item == 'C':
-            matrix1[i,2] = 1
-        if item == 'G':
-            matrix1[i,3] = 1
-
-    """
-    Generates a binary matrix for DNA/RNA sequence, where each column is a possible
-    pair of adjacent bases, and each row is a position along the sequence.
-    Matrix column order is AA, AT, AC, AG, TA, TT, TC, TG, CA, CT, CC, CG, GA, GT, GC, GG
-    """
-    sequence = sequence.replace('U','T')
-    pairwise_sequence = []
-    for i in range(len(sequence)-1):
-        basepair = sequence[i]+sequence[i+1]
-        pairwise_sequence.append(basepair)
-    matrix2 = zeros([len(pairwise_sequence),16], dtype=int)
-    for i,item in enumerate(pairwise_sequence):
-        if item == 'AA':
-            matrix2[i,0] = 1
-        if item == 'AT':
-            matrix2[i,1] = 1
-        if item == 'AC':
-            matrix2[i,2] = 1
-        if item == 'AG':
-            matrix2[i,3] = 1
-        if item == 'TA':
-            matrix2[i,4] = 1
-        if item == 'TT':
-            matrix2[i,5] = 1
-        if item == 'TC':
-            matrix2[i,6] = 1
-        if item == 'TG':
-            matrix2[i,7] = 1
-        if item == 'CA':
-            matrix2[i,8] = 1
-        if item == 'CT':
-            matrix2[i,9] = 1
-        if item == 'CC':
-            matrix2[i,10] = 1
-        if item == 'CG':
-            matrix2[i,11] = 1
-        if item == 'GA':
-            matrix2[i,12] = 1
-        if item == 'GT':
-            matrix2[i,13] = 1
-        if item == 'GC':
-            matrix2[i,14] = 1
-        if item == 'GG':
-            matrix2[i,15] = 1
-
+    from numpy import zeros, sum
+    # Function
     """
     Scoring algorithm
     """
@@ -200,6 +95,9 @@ def rs1_score(sequence):
     low_gc = -0.2026259
     high_gc = -0.1665878
 
+    """
+    Weight matrixes derived from Doench 2014
+    """
     first_order = ['G02','A03','C03','C04','C05','G05','A06','C06','C07','G07','A12','A15','C15','A16',
                     'C16','T16','A17','G17','C18','G18','A19','C19','G20','T20','G21','T21','C22','T22','T23',
                     'C24','G24','T24','A25','C25','T25','G28','T28','C29','G30']
@@ -281,113 +179,147 @@ def rs1_score(sequence):
         gc_score = low_gc
     else:
         gc_score = high_gc
-    score_first = trace(matmul(first_matrix,matrix1))
-    score_second = trace(matmul(second_matrix,matrix2))
-    score = (1/(1 + math.exp(-(intersect + gc_score + score_first + score_second))))
-    return round(score,5)
+    matrix1 = one_base_matrix(sequence)
+    score_first = sum(matrix1.dot(first_matrix))
+    matrix2 = pairwise_matrix(sequence)
+    score_second = sum(matrix2.dot(second_matrix))
+    score_sum = score_first + score_second + gc_score
+
+    score = math.pow((1 - math.exp(-(intersect + score_sum))),-1)
+    return score
 
 
-# Helper function for retrieve features by position, will be used for every line.
-def retrieve_gff_helper(chrom, cutsite, gff_dataframe_csv):
-    import pandas as pd
-    gff_dataframe = pd.read_csv(gff_dataframe_csv)
-    # Filter gff by input_chrom
-    filtered_gff_df_1 = gff_dataframe[gff_dataframe['chromosome'] == chrom]
+def generate_dictionary(input):
+    """
 
-    # Check for each row of gff_dataframe, if cutsite is between start and end, list features
-    # If source of GFF is phytozome, look for additional file
-
-    # Use pandas filtering
-    start_end_filter = (filtered_gff_df_1['start'] <= cutsite) & (filtered_gff_df_1['end'] <= cutsite)
-    filtered_gff_df_2 = filtered_gff_df_1[start_end_filter]
-
-    feature_list = filtered_gff_df_2['attributes'].tolist()
-
-    feature_string = ''.join(feature_list)
-    return feature_string
+    """
+    # import libraries
+    import itertools
+    # function
+    dictionary = input.split()
+    dictionary = dict(itertools.zip_longest(*[iter(dictionary)] * 2, fillvalue=""))
+    return dictionary
 
 
-def retrieve_features_by_position(gff_dataframe_csv, DF, vectorized_helper_function):
-    '''
-    searches a gff dataframe for all the genomic features at a given chromosome
-    and position
-    '''
-
-    # For each cutsite, if it's between gff_dataframe['start'] and gff_dataframe['end'], add DF['feature']
-    feature_array = vectorized_helper_function(DF['chromosome'], DF['cutsite'], gff_dataframe_csv)
-
-    print(feature_array)
-    return
-
-
-def get_id(sys_type, chr):
-    'generates a unique ID for each target site'
-    import random
-    import string
-    #  defining first digit
-    if sys_type == 'cas9':
-        first = 'A'
-    elif sys_type == 'cpf1':
-        first = 'B'
-    # defining two following digits
-    second = str(chr[-2::])
-    #defining remaining sequence
-    remaining = ''.join(random.choices(string.ascii_letters + string.digits,k=7)).upper()
-    return ''.join([first, second, remaining])
+def location(primer, genome):
+    """
+    Written by: Hans Müller Paul and Zhiwen Jiang
+    """
+    a = True
+    list_of_beginning = []
+    list_of_end = []
+    start = 0
+    primer_location = []
+    while a:
+        beginning = genome.find(primer, start)+1
+        if beginning + len(primer)-1 >= len(genome) or beginning == 0:
+            a = False
+        else:
+            end = beginning + len(primer)-1
+            list_of_beginning.append(beginning)
+            list_of_end.append(end)
+            start = beginning
+        primer_location = list(zip(list_of_beginning, list_of_end))
+    return primer_location
 
 
-def preprocess_PAM_sites(DF):
-    DF['crispr_sys'] = DF['raw'][5]
-    DF['sequence'] = DF['raw'][3]
-    DF['long_sequence'] = DF['raw'][4]
-    DF['chromosome'] = DF['raw'][2]
-    DF['start_pos'] = DF['raw'][0]
-    DF['end_pos'] = DF['raw'][1]
-    DF['strand'] = DF['raw'][6]
-    DF['raw'] = 'completed'
-    # pd.to_numeric(DF, errors='coerce')
-    return DF
+def formatted(input_genome):
+    """
+    Written by: Hans Müller Paul and Joao Paulo Gomes Viana
+    """
+    # import libraries
+    import re
+    # function
+    formatted = re.sub('\n','',input_genome)
+    formatted = re.sub('>', '\n>',formatted)
+    formatted = formatted[1:]
+    formatted = re.sub('([0-9]+)','\\1 \n',formatted)
+    return formatted
 
 
-def fill_row(DF):
-    from numpy import vectorize
-    DF['crispr_id'] = vectorize(get_id)(DF['crispr_sys'],DF['chromosome'])
-    DF['cutsite'] = vectorize(apply_cutsite)(DF['start_pos'],DF['end_pos'],DF['crispr_sys'])
-    DF['on_site_score'] = vectorize(rs1_score)(DF['sequence'])
-    # DF['features'] = vectorize(retrieve_features_by_position)(gff_dataframe,DF['chromosome'],DF['cutsite'])
-    # pd.to_numeric(DF, errors='coerce')
-    return DF
-
-
-def optimize_dataframe(DF):
-    '''
-    Currently not in use
-    '''
-    import pandas as pd
-    # int
-    DF['start_pos'] = pd.to_numeric(DF['start_pos'],downcast='unsigned')
-    DF['end_pos'] = pd.to_numeric(DF['end_pos'],downcast='unsigned')
-    # DF['cutsite'] = pd.to_numeric(DF['cutsite'])
-    #float
-    DF['on_site_score'] = pd.to_numeric(DF['on_site_score'],downcast='float')
-    # category
-    DF['crispr_sys'] = DF['crispr_sys'].astype('category')
-    DF['chromosome'] = DF['chromosome'].astype('category')
-    DF['strand'] = DF['strand'].astype('category')
-    return DF
+def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█'):
+    """
+    Call in a loop to create terminal progress bar
+    Args:
+        iteration   - Required  : current iteration (Int)
+        total       - Required  : total iterations (Int)
+        prefix      - Optional  : prefix string (Str)
+        suffix      - Optional  : suffix string (Str)
+        decimals    - Optional  : positive number of decimals in percent complete (Int)
+        length      - Optional  : character length of bar (Int)
+        fill        - Optional  : bar fill character (Str)
+    """
+    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+    filledLength = int(length * iteration // total)
+    bar = fill * filledLength + '-' * (length - filledLength)
+    print('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix), end = '\r')
+    # Print New Line on Complete
+    if iteration == total: 
+        print()
+    """ Paste the following section within loop """
+    # """ Update Progress Bar """
+    # printProgressBar(i + 1, l, prefix = 'Analyzing guide sequences:', suffix = 'Complete', length = 50)
 
 
 def parallelize(data, func):
-    '''
-    Currently not in use
-    '''
-    from multiprocessing import cpu_count, Pool
-    if cpu_count() > 2:
-        cores = cpu_count()-1    # Runs in all cores except for one
+    """
+    """
+    # Import Libraries
+    import multiprocessing as mp
+    import numpy as np
+    # Function
+    if mp.cpu_count() > 2:
+        cores = mp.cpu_count()-1    # Runs in all cores except for one
     else:
         cores = 1                   # Runs in a single core
+    
+    data_split = np.array_split(data, cores)
     pool = mp.Pool(cores)
-    pool.imap(func,data,chunksize = 500)
+    pool.map(func,data_split)
     pool.close()
     pool.join()
-    return 
+    return pool
+
+
+def create_dataframe():
+    """
+    creates a dataframe to store information
+    """
+    # Import Libraries
+    import pandas as pd
+    # Function
+    df_cols = [
+                'sequence',         # STR
+                'on_site_score'    # FLOAT
+                ]
+    df = pd.DataFrame(columns=df_cols)
+    """
+    implement memory optimization by assigning appropriate dtype
+    """
+    return df
+
+
+def save_dataframe_to_tmp(data):
+    """ save one h_matrix and one permutation in temorary files with sequence_number appended names.
+    Args:
+        data: list that will have a function applied to it
+        unique_id: temporary file name suffix. 
+    """
+    # Import Libraries
+    import os
+    import pandas as pd
+    import numpy as np
+    # Function
+    tmp_dir = os.getcwd().join("/tmp_directory")
+    os.makedirs(tmp_dir, mode=0o755, exist_ok=True)
+    tmp_file_name = os.path.join(tmp_dir, f'tmp_{os.getpid()}')
+    dataframe = create_dataframe()
+    for i,item in enumerate(data):
+        score = rs1_score(item)
+        dataline = pd.Series([item,score],index=dataframe.columns)
+        # print(dataline)
+        dataframe = dataframe.append(dataline,ignore_index=True)
+    with open(tmp_file_name, 'wb') as temp_path:
+        return dataframe.to_csv(temp_path)
+
+
