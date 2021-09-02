@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-# Written by: Hans Müller Paul and Dave Istanto
-#                           NOTES: adding switch-case statements replacing if clauses in functions
 
 ### Importing required libraries
 import argparse
@@ -146,7 +144,6 @@ def create_dataframe():
                 'cutsite',          # INT
                 'strand',           # CAT
                 'on_site_score',    # FLOAT
-                # 'off_site_score',   # FLOAT
                 'features'          # LIST
                 ]
     df = pd.DataFrame(columns=df_cols)
@@ -157,7 +154,7 @@ def apply_cutsite(start_pos, end_pos, crispr_sys):
     if crispr_sys == 'cas9':
         cutsite = end_pos-3
     elif crispr_sys == 'cpf1':
-        cutsite = end_pos-5 # this number is currently a placeholder
+        cutsite = end_pos-5
     return cutsite
 
 
@@ -182,8 +179,7 @@ def rs1_score(sequence):
             matrix1[i,2] = 1
         if item == 'G':
             matrix1[i,3] = 1
-    # print(f'''first order one hot: 
-    # {matrix1}''')
+
 
     """
     Generates a binary matrix for DNA/RNA sequence, where each column is a possible
@@ -230,8 +226,7 @@ def rs1_score(sequence):
             matrix2[i,14] = 1
         if item == 'GG':
             matrix2[i,15] = 1
-    # print(f'''second order one hot: 
-    # {matrix2}''')
+
 
     """
     Scoring matrix
@@ -257,8 +252,6 @@ def rs1_score(sequence):
                     0.27891626,-0.4031022,-0.0773007,0.28793562,-0.2216372,
                     -0.6890167,0.11787758,-0.1604453,0.38634258]
     first_order_scores = dict(zip(first_order,first_scores))
-    # print(f'''first order dict:
-    # {first_order_scores}''')
 
     second_order = ['GT02','GC05','AA06','TA06','GG07',
                     'GG12','TA12','TC12','TT12','GG13',
@@ -275,8 +268,7 @@ def rs1_score(sequence):
                     0.64907554,-0.0773007,0.28793562,-0.2216372,0.11787758,
                     -0.69774]
     second_order_scores = dict(zip(second_order,second_scores))
-    # print(f'''second order dict:
-    # {second_order_scores}''')
+
 
     # order 1 score matrix
     """ row order == A T/U C G """
@@ -286,18 +278,13 @@ def rs1_score(sequence):
     for k,v in first_order_scores.items():
         if k[0] == 'A':
             first_matrix[0,posit(k)] = v
-            # print(f'If there is an A in position {posit(k)}, the score is {v}')
         elif k[0] == 'T':
             first_matrix[1,posit(k)] = v
-            # print(f'If there is a T in position {posit(k)}, the score is {v}')
         elif k[0] == 'C':
             first_matrix[2,posit(k)] = v
-            # print(f'If there is a C in position {posit(k)}, the score is {v}')
         elif k[0] == 'G':
             first_matrix[3,posit(k)] = v
-            # print(f'If there is a G in position {posit(k)}, the score is {v}')
-#     print(f'''first order weight matrix:
-# {first_matrix}''')
+)
 
     # order 2 score matrix
     """ row order == AA AT AC AG TA TT TC TG CA CT CC CG GA GT GC GG """
@@ -335,8 +322,6 @@ def rs1_score(sequence):
             second_matrix[14,int(k[2:])-1] = v
         if k[0:2] == 'GG':
             second_matrix[15,int(k[2:])-1] = v
-    # print(f'''second order weight matrix:
-    # {second_matrix}''')
 
     item_gc = sequence[0][5:-5]
     gc_count = item_gc.count('G') + item_gc.count('C')
@@ -349,49 +334,6 @@ def rs1_score(sequence):
     score_second = np.trace(np.matmul(second_matrix,matrix2))
     score = (1/(1 + math.exp(-(intersect + gc_score + score_first + score_second))))
     return score
-
-
-# def apply_off_site(sequence):
-#     return 0
-
-
-# def off_site_score(sequence, id, genome):
-#     off_site = 'b'
-#     return off_site
-
-
-# Helper function for retrieve features by position, will be used for every line.
-def retrieve_gff_helper(chrom, cutsite, gff_dataframe_csv):
-    from pandas import read_csv
-    gff_dataframe = read_csv(gff_dataframe_csv)
-    # Filter gff by input_chrom
-    filtered_gff_df_1 = gff_dataframe[gff_dataframe['chromosome'] == chrom]
-
-    # Check for each row of gff_dataframe, if cutsite is between start and end, list feature
-
-
-    # Use pandas filtering
-    start_end_filter = (filtered_gff_df_1['start'] <= cutsite) & (filtered_gff_df_1['end'] <= cutsite)
-    filtered_gff_df_2 = filtered_gff_df_1[start_end_filter]
-
-    feature_list = filtered_gff_df_2['attributes'].tolist()
-
-    feature_string = ''.join(feature_list)
-    return feature_string
-
-
-def retrieve_features_by_position(gff_dataframe_csv, DF, vectorized_helper_function):
-    '''
-    searches a gff dataframe for all the genomic features at a given chromosome
-    and position
-    '''
-    import numpy as np
-
-    # For each cutsite, if it's between gff_dataframe['start'] and gff_dataframe['end'], add DF['feature']
-    feature_array = vectorized_helper_function(DF['chromosome'], DF['cutsite'], gff_dataframe_csv)
-
-    print(feature_array)
-    return
 
 
 def get_id(sys_type, chr):
@@ -421,7 +363,6 @@ def preprocess_PAM_sites(DF):
     DF['end_pos'] = DF['raw'][1]
     DF['strand'] = DF['raw'][6]
     DF['raw'] = 'completed'
-    # pd.to_numeric(DF, errors='coerce')
     return DF
 
 
@@ -438,69 +379,7 @@ def fill_row(DF):
         chrom = DF['chromosome']
         problem_seq = DF['long_sequence']
         print(f'length error occurred at guide in position {start_pos} - {end_pos} of {chrom}, sequence: {problem_seq}')
-    # DF['off_site_score'] = vectorize(apply_off_site)(DF['long_sequence'])
-    # DF['features'] = vectorize(retrieve_features_by_position)(gff_dataframe,DF['chromosome'],DF['cutsite'])
-    # pd.to_numeric(DF, errors='coerce')
     return DF
-
-
-def optimize_dataframe(DF):
-    # int
-    DF['start_pos'] = pd.to_numeric(DF['start_pos'],downcast='unsigned')
-    DF['end_pos'] = pd.to_numeric(DF['end_pos'],downcast='unsigned')
-    # DF['cutsite'] = pd.to_numeric(DF['cutsite'])
-    #float
-    DF['on_site_score'] = pd.to_numeric(DF['on_site_score'],downcast='float')
-    # DF['off_site_score'] = pd.to_numeric(DF['off_site_score'],downcast='float')
-    # category
-    DF['crispr_sys'] = DF['crispr_sys'].astype('category')
-    DF['chromosome'] = DF['chromosome'].astype('category')
-    DF['strand'] = DF['strand'].astype('category')
-    return DF
-
-
-def parallelize(data, func):
-    """
-    """
-    import multiprocessing as mp
-    if mp.cpu_count() > 2:
-        cores = mp.cpu_count()-1    # Runs in all cores except for one
-    else:
-        cores = 1                   # Runs in a single core
-    
-    # data_split = np.array_split(data, cores)
-    # data_split = zip(*[iter(data)]*100)
-    # print(len(data_split))
-    pool = mp.Pool(cores)
-    pool.imap(func,data,chunksize = 500)
-    pool.close()
-    pool.join()
-    return 
-
-
-def parallelize_process(function_name, zipped_arg_list):
-    '''
-    Locally parallelize processes based on resource in local machine
-    Args:
-        function_name: the worker function to be parallelized
-        zipped_arg_list: argument as a zipped object
-    Returns:
-        N/A
-    '''
-    import socket
-    from multiprocessing import Pool, cpu_count
-
-    host = socket.gethostname()
-    try:
-        pool = Pool(processes=cpu_count()-1)
-        pool.starmap(function_name, zipped_arg_list)
-
-        pool.close()
-        pool.join()
-        return
-        # return "Succeeded in running parallelization on host {}!".format(host)
-    except:
-        raise OSError("Failed running parallel processing on host {}:{}".format(host, sys.exc_info()))
 
 
 def main():
@@ -540,7 +419,6 @@ University of Illinois at Urbana-Champaign
 
 
     ### Import genome files
-    # fasta_file = cropsr_functions.import_fasta_file(args.f)
     fasta_file = import_fasta_file(args.f)
     gff_df = import_gff_file(args.g)
 
@@ -554,7 +432,6 @@ University of Illinois at Urbana-Champaign
 
     ### Create Dataframe containing all PAM site information
     CRIPSR_dataframe = create_dataframe()
-    ### add condition to check RAM before running next line
     CRIPSR_dataframe.to_csv(args.o, header=True, index=False, mode='w')
 
     for chromosome,sequence in fasta_file.items():
@@ -571,7 +448,6 @@ University of Illinois at Urbana-Champaign
                     shortseq = get_gRNA_sequence(sequence[pam_location[0]:pam_location[1]])
                     longseq = get_gRNA_sequence(sequence[pam_location[0]-5:pam_location[1]+5])
                     crispr_guide = [pam_location[0],pam_location[1],chromosome[1::],shortseq,longseq,'cas9','+']
-                    # crispr_guide = pd.Series((pam_location[0],pam_location[1],chromosome[1::],shortseq,longseq,'cas9','+'))
                     Complete_dataset.append(crispr_guide)
 
             # - strand
@@ -583,7 +459,6 @@ University of Illinois at Urbana-Champaign
                     shortseq = get_gRNA_sequence(get_reverse_complement(sequence[pam_location[0]:pam_location[1]]))
                     longseq = get_gRNA_sequence(get_reverse_complement(sequence[pam_location[0]-5:pam_location[1]+5]))
                     crispr_guide = [pam_location[1],pam_location[0],chromosome[1::],shortseq,longseq,'cas9','-']
-                    # crispr_guide = pd.Series((pam_location[1],pam_location[0],chromosome[1::],shortseq,longseq,'cas9','-'))
                     Complete_dataset.append(crispr_guide)
 
             if args.verbose:
@@ -623,33 +498,15 @@ University of Illinois at Urbana-Champaign
         # print(Complete_dataset)
         for i,item in enumerate(Complete_dataset):
             lesser_list.append((item))
-            # print(lesser_list)
             if len(lesser_list) == 5000 or i == len(Complete_dataset)-1:
-                # print (f'i = {i}')
-                # print(f'Starting analysis on block of {len(lesser_list)} sequences')
                 CRIPSR_dataframe['raw'] = lesser_list
                 CRIPSR_dataframe.apply(preprocess_PAM_sites,axis=1)
                 CRIPSR_dataframe.apply(fill_row,axis=1)
-
-                # # NEW STUFF 3 JULY 2019
-                # gff_df_csv = ('/Users/hmpaul2/Dropbox/Dev/Python/gff_df.csv')
-                # retrieve_gff_helper_vectorized = vectorize(retrieve_gff_helper)
-                # retrieve_features_by_position(gff_df_csv, CRIPSR_dataframe, retrieve_gff_helper_vectorized)
-                # ########################
-
-                # CRIPSR_dataframe['features'] = retrieve_features_by_position(gff_df,CRIPSR_dataframe)
-                # print(CRIPSR_dataframe)
-                # CRIPSR_dataframe['features'] = vectorize(retrieve_features_by_position)(gff_df,CRIPSR_dataframe['chromosome'],CRIPSR_dataframe['cutsite'])
                 CRIPSR_dataframe.to_csv(args.o, header=False, index=False, mode='a+')
                 CRIPSR_dataframe = create_dataframe()
                 lesser_list = []
 
-
-    
-    # if args.verbose:
-    #     print(CRISPR_dataframe)
-
-
+                
     ### CONFIRMATION MESSAGE
     if args.verbose:
         print(f'The output file has been generated at {args.o}')
