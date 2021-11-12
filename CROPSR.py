@@ -10,6 +10,10 @@ import pandas as pd
 from numpy import vectorize
 from time import gmtime, strftime
 
+### CROPSR Version
+__version__ = '1.11b'
+
+
 ### Defining the arguments
 parser = argparse.ArgumentParser()
 
@@ -409,15 +413,16 @@ University of Illinois at Urbana-Champaign
 
         You are currently utilizing the following settings:
 
+        CROPSR version:                                 {__version__}
         Path to genome file in FASTA format:            {args.f}
         Path to output file:                            {args.o}
         Length of the gRNA sequence:                    {args.l}
         Length of flanking region for verification:     {args.L}
         Number of available CPUs:                       {cpu_count()}
         Path to annotation file in GFF format:          {args.g}
+        Path to annotation_info file in TXT format:     {args.p}
         Designing for CRISPR system:
             Streptococcus pyogenes Cas9                 {args.cas9}
-            Prevotella/Francisella Cpf1:                {args.cpf1}
         """)
 
 
