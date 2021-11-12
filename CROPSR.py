@@ -34,12 +34,12 @@ parser.add_argument('-L', '--flanking', metavar='', dest='L', type=int, default=
 parser.add_argument('--cas9', action='store_true',
                     help='specifies that design will be made for the Cas9 CRISPR system'
                     )
-parser.add_argument('--cpf1', action='store_true',
-                    help='specifies that design will be made for the Cpf1 CRISPR system'
-                    )
-parser.add_argument('--CUDA', action='store_true',
-                    help='runs processing steps utilizing the GPU instead of CPU where possible'
-                    )
+# parser.add_argument('--cpf1', action='store_true',
+#                     help='specifies that design will be made for the Cpf1 CRISPR system'
+#                     )
+# parser.add_argument('--CUDA', action='store_true',
+#                     help='runs processing steps utilizing the GPU instead of CPU where possible'
+#                     )
 parser.add_argument('-v', '--verbose', action='store_true',
                     help='prints visual indicators for each iteration'
                     )
