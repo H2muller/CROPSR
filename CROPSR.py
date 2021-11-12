@@ -16,10 +16,10 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-f', '--fasta', required=True, dest='f', 
                     help='[required] path to input file in FASTA format'
                     )
-parser.add_argument('-g', '--gff', required=True, dest='g', 
-                    help='[required] path to input file in GFF format'
+parser.add_argument('-g', '--gff', metavar='', dest='g', 
+                    help='path to input file in GFF format'
                     )
-parser.add_argument('-p', '--phytozome', dest='p', default=None,
+parser.add_argument('-p', '--phytozome', metavar='', dest='p', default=None,
                     help='path to input annotation info file in TXT format, default = None'
                     )
 parser.add_argument('-o', '--output', dest='o', default='data.csv',
