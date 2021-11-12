@@ -102,10 +102,10 @@ CROPSR was developed as a CLI software, and requires a basic understanding of ba
 
     optional arguments:
       -h, --help        show this help message and exit
-      -f F, --fasta F   [required] path to input file in FASTA format
-      -g G, --gff G     path to input file in GFF format
-      -p, --phytozome   path to input annotation info file in TXT format, default = None
-      -o O, --output O  path to output file, default = data.csv
+      -f , --fasta F   [required] path to input file in FASTA format
+      -g , --gff G     path to input file in GFF format
+      -p , --phytozome   path to input annotation info file in TXT format, default = None
+      -o , --output O  path to output file, default = data.csv
       -l , --length     length of the gRNA sequence, default = 20
       -L , --flanking   length of flanking region for verification, default = 200
       --cas9            specifies that design will be made for the Cas9 CRISPR system
