@@ -19,6 +19,9 @@ parser.add_argument('-f', '--fasta', required=True, dest='f',
 parser.add_argument('-g', '--gff', required=True, dest='g', 
                     help='[required] path to input file in GFF format'
                     )
+parser.add_argument('-p', '--phytozome', dest='p', default=None,
+                    help='path to input annotation info file in TXT format, default = None'
+                    )
 parser.add_argument('-o', '--output', dest='o', default='data.csv',
                     help='path to output file, default = data.csv'
                     )
