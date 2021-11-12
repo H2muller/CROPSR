@@ -284,7 +284,7 @@ def rs1_score(sequence):
             first_matrix[2,posit(k)] = v
         elif k[0] == 'G':
             first_matrix[3,posit(k)] = v
-)
+
 
     # order 2 score matrix
     """ row order == AA AT AC AG TA TT TC TG CA CT CC CG GA GT GC GG """
