@@ -13,7 +13,7 @@ from time import gmtime, strftime
 ### Defining the arguments
 parser = argparse.ArgumentParser()
 
-parser.add_argument('-f', '--fasta', required=True, dest='f', 
+parser.add_argument('-f', '--fasta', metavar='', required=True, dest='f', 
                     help='[required] path to input file in FASTA format'
                     )
 parser.add_argument('-g', '--gff', metavar='', dest='g', 
@@ -22,7 +22,7 @@ parser.add_argument('-g', '--gff', metavar='', dest='g',
 parser.add_argument('-p', '--phytozome', metavar='', dest='p', default=None,
                     help='path to input annotation info file in TXT format, default = None'
                     )
-parser.add_argument('-o', '--output', dest='o', default='data.csv',
+parser.add_argument('-o', '--output', metavar='', dest='o', default='data.csv',
                     help='path to output file, default = data.csv'
                     )
 parser.add_argument('-l', '--length', metavar='', dest='l', type=int, default=20,
