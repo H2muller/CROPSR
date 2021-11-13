@@ -405,7 +405,6 @@ def main():
 ##         Y8b  d8   88 `88.   `8b  d8'   88        db   8D   88 `88.         ##
 ##          `Y88P'   88   YD    `Y88P'    88        `8888Y'   88   YD         ##
 ##                                                                            ##
-##                                               Version: 1.01.1-beta         ##
 ##                                                                            ##
 ################################################################################
 U.S. Dept. of Energy's Center for Advanced Bioenergy and Bioproducts Innovation
