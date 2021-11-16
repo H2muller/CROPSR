@@ -160,8 +160,8 @@ def create_dataframe():
 def apply_cutsite(start_pos, end_pos, crispr_sys):
     if crispr_sys == 'cas9':
         cutsite = end_pos-3
-    elif crispr_sys == 'cpf1':
-        cutsite = end_pos-5
+    # elif crispr_sys == 'cpf1':
+    #     cutsite = end_pos-5
     return cutsite
 
 
@@ -350,8 +350,8 @@ def get_id(sys_type, chr):
     #  defining first digit
     if sys_type == 'cas9':
         first = 'A'
-    elif sys_type == 'cpf1':
-        first = 'B'
+    # elif sys_type == 'cpf1':
+    #     first = 'B'
     else:
         first = '0'
     # defining two following digits
@@ -390,8 +390,8 @@ def fill_row(DF):
 
 
 def main():
-    if not args.cas9 and not args.cpf1:
-        sys.exit('Please select at least one CRISPR system: Cas9 or Cpf1')
+    if not args.cas9: #and not args.cpf1:
+        sys.exit('Please select at least one CRISPR system: Cas9') #or Cpf1')
     
     if args.verbose:
         print(f"""
@@ -473,36 +473,35 @@ University of Illinois at Urbana-Champaign
                 {len(cas9_target_list + cas9_target_list2):n} Cas9 PAM sites were found on {chromosome[1::]}
                 ''')
 
-        if args.cpf1:
-        # + strand
-            motif = re.compile(r'(?=TTT.)')
-            cpf1_target_list = find_PAM_site(motif,sequence)
-            for target in cpf1_target_list:
-                pam_location = (target[0]+4,target[0]+(args.l+4))
-                if pam_location[0] >= 0 and pam_location[0] <= len(sequence) and pam_location[1] >= 0 and pam_location[1] <= len(sequence):
-                    shortseq = get_gRNA_sequence(sequence[pam_location[0]:pam_location[1]])
-                    longseq = get_gRNA_sequence(sequence[pam_location[0]-5:pam_location[1]+5])
-                    crispr_guide = pd.Series((pam_location[0],pam_location[1],chromosome[1::],shortseq,longseq,'cpf1','+'))
-                    Complete_dataset.append(crispr_guide)
+        # if args.cpf1:
+        # # + strand
+        #     motif = re.compile(r'(?=TTT.)')
+        #     cpf1_target_list = find_PAM_site(motif,sequence)
+        #     for target in cpf1_target_list:
+        #         pam_location = (target[0]+4,target[0]+(args.l+4))
+        #         if pam_location[0] >= 0 and pam_location[0] <= len(sequence) and pam_location[1] >= 0 and pam_location[1] <= len(sequence):
+        #             shortseq = get_gRNA_sequence(sequence[pam_location[0]:pam_location[1]])
+        #             longseq = get_gRNA_sequence(sequence[pam_location[0]-5:pam_location[1]+5])
+        #             crispr_guide = pd.Series((pam_location[0],pam_location[1],chromosome[1::],shortseq,longseq,'cpf1','+'))
+        #             Complete_dataset.append(crispr_guide)
 
-        # - strand
-            motif = re.compile(r'(?=.AAA)')
-            cpf1_target_list2 = find_PAM_site(motif,sequence)
-            for target in cpf1_target_list2:
-                pam_location = (target[0]-(args.l+1),target[0]-1)
-                if pam_location[0] >= 0 and pam_location[0] <= len(sequence) and pam_location[1] >= 0 and pam_location[1] <= len(sequence):
-                    shortseq = get_gRNA_sequence(sequence[pam_location[0]:pam_location[1]])
-                    longseq = get_gRNA_sequence(sequence[pam_location[0]-5:pam_location[1]+5])
-                    crispr_guide = pd.Series((pam_location[1],pam_location[0],chromosome[1::],shortseq,longseq,'cpf1','-'))
-                    Complete_dataset.append(crispr_guide)
+        # # - strand
+        #     motif = re.compile(r'(?=.AAA)')
+        #     cpf1_target_list2 = find_PAM_site(motif,sequence)
+        #     for target in cpf1_target_list2:
+        #         pam_location = (target[0]-(args.l+1),target[0]-1)
+        #         if pam_location[0] >= 0 and pam_location[0] <= len(sequence) and pam_location[1] >= 0 and pam_location[1] <= len(sequence):
+        #             shortseq = get_gRNA_sequence(sequence[pam_location[0]:pam_location[1]])
+        #             longseq = get_gRNA_sequence(sequence[pam_location[0]-5:pam_location[1]+5])
+        #             crispr_guide = pd.Series((pam_location[1],pam_location[0],chromosome[1::],shortseq,longseq,'cpf1','-'))
+        #             Complete_dataset.append(crispr_guide)
 
-            if args.verbose:
-                print (f'''
-                {len(cpf1_target_list + cpf1_target_list2):n} Cpf1 PAM sites were found on {chromosome[1::]}
-                ''')
+        #     if args.verbose:
+        #         print (f'''
+        #         {len(cpf1_target_list + cpf1_target_list2):n} Cpf1 PAM sites were found on {chromosome[1::]}
+        #         ''')
 
         lesser_list = []
-        # print(Complete_dataset)
         for i,item in enumerate(Complete_dataset):
             lesser_list.append((item))
             if len(lesser_list) == 5000 or i == len(Complete_dataset)-1:
