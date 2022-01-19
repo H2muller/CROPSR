@@ -1,6 +1,10 @@
 # CROPSR: An Automated Platform for Complex Genome-Wide CRISPR gRNA Design and Validation
 
 
+## Recent updates
+CROPSR is being refactored to make it more efficient at hardware scaling. The entire project is being rewritten in a more Object-Oriented style, and to better conform with the S.O.L.I.D. principles.
+
+
 ## About CROPSR
 
 **This repository is open sourced as specified in the LICENSE file. It is Apache License 2.0. For additional information, please check [LICENSE](LICENSE).**  
