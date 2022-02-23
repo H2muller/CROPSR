@@ -9,7 +9,7 @@ CROPSR is a python tool designed for genome-wide gRNA design and evaluation for 
 ### Citation
 Please cite the following when utilizing CROPSR:
 
-> H. Müller Paul, D. D. Istanto, J. Heldenbrand, and M. Hudson, "CROPSR: An automated platform for complex genome-wide CRISPR gRNA design and validation", BMC Bioinformatics, Oct 2021. [Online] https://doi.org/10.21203/rs.3.rs-927816/v1.
+> Müller Paul, H., Istanto, D.D., Heldenbrand, J. et al. CROPSR: an automated platform for complex genome-wide CRISPR gRNA design and validation. BMC Bioinformatics 23, 74 (2022). https://doi.org/10.1186/s12859-022-04593-2.
 
 
 ---
