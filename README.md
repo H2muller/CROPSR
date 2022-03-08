@@ -98,7 +98,7 @@ CROPSR was developed as a CLI software, and requires a basic understanding of ba
     $ python3 CROPSR.py -h
     ```
     ```
-    usage: CROPSR_6.py [-h] -f F -g G -p [-o O] [-l] [-L] [--cas9] [-v]
+    usage: CROPSR.py [-h] -f F -g G -p [-o O] [-l] [-L] [--cas9] [-v]
 
     optional arguments:
       -h, --help        show this help message and exit
@@ -270,7 +270,7 @@ The data structure of the repository is represented below:
 
 2. Run CROPSR with the sample data (code is available below).
     ```bash
-    $ python3 CROPSR.py -f sample_data/sample_genome.fa -g sample_data/sample_genome.gff3 -o sample_data/sample_genome_output.csv --cas9 -v
+    $ python3 CROPSR.py -f sample_data/sample_genome.fa -g sample_data/sample_genome.gff -o sample_data/sample_genome_output.csv --cas9 -v
     ```
     Note that the `verbose` flag was left on. This will cause the terminal to print notifications during the process, however, it means you will not be able to utilize the terminal window until it is finished. If you close the terminal window while the process is running, it will cause an interruption.
     
@@ -278,7 +278,7 @@ The data structure of the repository is represented below:
       <summary>Click here to learn how to run this process in the background</summary>
 
       ```bash
-      $ python3 CROPSR.py -f sample_data/sample_genome.fa -g sample_data/sample_genome.gff3 -o sample_data/sample_genome_output.csv --cas9 &
+      $ python3 CROPSR.py -f sample_data/sample_genome.fa -g sample_data/sample_genome.gff -o sample_data/sample_genome_output.csv --cas9 &
       ```
       In this variation, the `verbose` flag was removed, and a `&` was added at the end of the command. This will free your terminal window to perform other tasks or be closed. **This is the recommended approach when running real data, as the process may take more than a day to finish**. Make sure the computer remains powered on for the entirety of the process.
     </details>
