@@ -167,18 +167,16 @@ def rs1_score(sequence):
     seq = str(sequence).upper()
     seq = list(seq)
     matrix1  = np.zeros([len(sequence),4], dtype=int)
+    baseIndex = {
+        'A': 0,
+        'T': 1,
+        'U': 1,
+        'C': 2,
+        'G': 3
+    }
     for i,item in enumerate(sequence):
-        if item == 'A':
-            matrix1[i,0] = 1
-        if item == 'T':
-            matrix1[i,1] = 1
-        if item == 'U':
-            matrix1[i,1] = 1
-        if item == 'C':
-            matrix1[i,2] = 1
-        if item == 'G':
-            matrix1[i,3] = 1
-
+        index = baseIndex[item.upper()]
+        matrix1[i,index] = 1
 
     """
     Generates a binary matrix for DNA/RNA sequence, where each column is a possible
@@ -192,40 +190,28 @@ def rs1_score(sequence):
             basepair = sequence[i]+sequence[i+1]
             pairwise_sequence.append(basepair)
     matrix2 = np.zeros([len(pairwise_sequence),16], dtype=int)
-    for i,item in enumerate(pairwise_sequence):
-        if item == 'AA':
-            matrix2[i,0] = 1
-        if item == 'AT':
-            matrix2[i,1] = 1
-        if item == 'AC':
-            matrix2[i,2] = 1
-        if item == 'AG':
-            matrix2[i,3] = 1
-        if item == 'TA':
-            matrix2[i,4] = 1
-        if item == 'TT':
-            matrix2[i,5] = 1
-        if item == 'TC':
-            matrix2[i,6] = 1
-        if item == 'TG':
-            matrix2[i,7] = 1
-        if item == 'CA':
-            matrix2[i,8] = 1
-        if item == 'CT':
-            matrix2[i,9] = 1
-        if item == 'CC':
-            matrix2[i,10] = 1
-        if item == 'CG':
-            matrix2[i,11] = 1
-        if item == 'GA':
-            matrix2[i,12] = 1
-        if item == 'GT':
-            matrix2[i,13] = 1
-        if item == 'GC':
-            matrix2[i,14] = 1
-        if item == 'GG':
-            matrix2[i,15] = 1
+    pairIndex = {
+        'AA': 0,
+        'AT': 1,
+        'AC': 2,
+        'AG': 3,
+        'TA': 4,
+        'TT': 5,
+        'TC': 6,
+        'TG': 7,
+        'CA': 8,
+        'CT': 9,
+        'CC': 10,
+        'CG': 11,
+        'GA': 12,
+        'GT': 13,
+        'GC': 14,
+        'GG': 15,
+    }
 
+    for i,item in enumerate(pairwise_sequence):
+        index = pairIndex[item.upper()]
+        matrix2[i,index] = 1
 
     """
     Scoring matrix
@@ -275,52 +261,15 @@ def rs1_score(sequence):
     def posit(key):
         return int(key[1:])-1
     for k,v in first_order_scores.items():
-        if k[0] == 'A':
-            first_matrix[0,posit(k)] = v
-        elif k[0] == 'T':
-            first_matrix[1,posit(k)] = v
-        elif k[0] == 'C':
-            first_matrix[2,posit(k)] = v
-        elif k[0] == 'G':
-            first_matrix[3,posit(k)] = v
-
+        index = baseIndex[k[0].upper()]
+        first_matrix[index, posit(k)] = v
 
     # order 2 score matrix
     """ row order == AA AT AC AG TA TT TC TG CA CT CC CG GA GT GC GG """
     second_matrix = np.zeros([16,29], dtype=float)
     for k,v in second_order_scores.items():
-        if k[0:2] == 'AA':
-            second_matrix[0,int(k[2:])-1] = v
-        if k[0:2] == 'AT':
-            second_matrix[1,int(k[2:])-1] = v
-        if k[0:2] == 'AC':
-            second_matrix[2,int(k[2:])-1] = v
-        if k[0:2] == 'AG':
-            second_matrix[3,int(k[2:])-1] = v
-        if k[0:2] == 'TA':
-            second_matrix[4,int(k[2:])-1] = v
-        if k[0:2] == 'TT':
-            second_matrix[5,int(k[2:])-1] = v
-        if k[0:2] == 'TC':
-            second_matrix[6,int(k[2:])-1] = v
-        if k[0:2] == 'TG':
-            second_matrix[7,int(k[2:])-1] = v
-        if k[0:2] == 'CA':
-            second_matrix[8,int(k[2:])-1] = v
-        if k[0:2] == 'CT':
-            second_matrix[9,int(k[2:])-1] = v
-        if k[0:2] == 'CC':
-            second_matrix[10,int(k[2:])-1] = v
-        if k[0:2] == 'CG':
-            second_matrix[11,int(k[2:])-1] = v
-        if k[0:2] == 'GA':
-            second_matrix[12,int(k[2:])-1] = v
-        if k[0:2] == 'GT':
-            second_matrix[13,int(k[2:])-1] = v
-        if k[0:2] == 'GC':
-            second_matrix[14,int(k[2:])-1] = v
-        if k[0:2] == 'GG':
-            second_matrix[15,int(k[2:])-1] = v
+        index = pairIndex[k[0:2].upper()]
+        second_matrix[index, int(k[2:])-1] = v
 
     item_gc = sequence[0][5:-5]
     gc_count = item_gc.count('G') + item_gc.count('C')

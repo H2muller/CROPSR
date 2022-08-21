@@ -12,17 +12,16 @@ def one_base_matrix(sequence):
     seq = str(sequence).upper()
     seq = list(seq)
     matrix = zeros([len(sequence),4], dtype=int)
+    baseIndex = {
+        'A': 0,
+        'T': 1,
+        'U': 1,
+        'C': 2,
+        'G': 3
+    }
     for i,item in enumerate(sequence):
-        if item == 'A':
-            matrix[i,0] = 1
-        if item == 'T':
-            matrix[i,1] = 1
-        if item == 'U':
-            matrix[i,1] = 1
-        if item == 'C':
-            matrix[i,2] = 1
-        if item == 'G':
-            matrix[i,3] = 1
+        index = baseIndex[item.upper()]
+        matrix[i,index] = 1
     return matrix
 
 
@@ -42,39 +41,27 @@ def pairwise_matrix(sequence):
             basepair = sequence[i]+sequence[i+1]
             pairwise_sequence.append(basepair)
     matrix = zeros([len(pairwise_sequence),16], dtype=int)
+    pairIndex = {
+        'AA': 0,
+        'AT': 1,
+        'AC': 2,
+        'AG': 3,
+        'TA': 4,
+        'TT': 5,
+        'TC': 6,
+        'TG': 7,
+        'CA': 8,
+        'CT': 9,
+        'CC': 10,
+        'CG': 11,
+        'GA': 12,
+        'GT': 13,
+        'GC': 14,
+        'GG': 15,
+    }
     for i,item in enumerate(pairwise_sequence):
-        if item == 'AA':
-            matrix[i,0] = 1
-        if item == 'AT':
-            matrix[i,1] = 1
-        if item == 'AC':
-            matrix[i,2] = 1
-        if item == 'AG':
-            matrix[i,3] = 1
-        if item == 'TA':
-            matrix[i,4] = 1
-        if item == 'TT':
-            matrix[i,5] = 1
-        if item == 'TC':
-            matrix[i,6] = 1
-        if item == 'TG':
-            matrix[i,7] = 1
-        if item == 'CA':
-            matrix[i,8] = 1
-        if item == 'CT':
-            matrix[i,9] = 1
-        if item == 'CC':
-            matrix[i,10] = 1
-        if item == 'CG':
-            matrix[i,11] = 1
-        if item == 'GA':
-            matrix[i,12] = 1
-        if item == 'GT':
-            matrix[i,13] = 1
-        if item == 'GC':
-            matrix[i,14] = 1
-        if item == 'GG':
-            matrix[i,15] = 1
+        index = pairIndex[item.upper()]
+        matrix[i,index] = 1
     return matrix
 
 
@@ -126,52 +113,41 @@ def rs1_score(sequence):
     # order 1 score matrix
     """ row order == A T/U C G """
     first_matrix = zeros([4,30], dtype=int)
+    baseIndex = {
+        'A': 0,
+        'T': 1,
+        'U': 1,
+        'C': 2,
+        'G': 3
+    }
     for k,v in first_order_scores.items():
-        if k[0] == 'A':
-            first_matrix[0,int(k[1:])-1] = v
-        if k[0] == 'T':
-            first_matrix[1,int(k[1:])-1] = v
-        if k[0] == 'C':
-            first_matrix[2,int(k[1:])-1] = v
-        if k[0] == 'G':
-            first_matrix[3,int(k[1:])-1] = v
+        index = baseIndex[k[0].upper()]
+        first_matrix[index, int(k[1:])-1] = v
 
     # order 2 score matrix
     """ row order == AA AT AC AG TA TT TC TG CA CT CC CG GA GT GC GG """
     second_matrix = zeros([16,29], dtype=int)
+    pairIndex = {
+        'AA': 0,
+        'AT': 1,
+        'AC': 2,
+        'AG': 3,
+        'TA': 4,
+        'TT': 5,
+        'TC': 6,
+        'TG': 7,
+        'CA': 8,
+        'CT': 9,
+        'CC': 10,
+        'CG': 11,
+        'GA': 12,
+        'GT': 13,
+        'GC': 14,
+        'GG': 15,
+    }
     for k,v in second_order_scores.items():
-        if k[0:2] == 'AA':
-            second_matrix[0,int(k[2:])-1] = v
-        if k[0:2] == 'AT':
-            second_matrix[1,int(k[2:])-1] = v
-        if k[0:2] == 'AC':
-            second_matrix[2,int(k[2:])-1] = v
-        if k[0:2] == 'AG':
-            second_matrix[3,int(k[2:])-1] = v
-        if k[0:2] == 'TA':
-            second_matrix[4,int(k[2:])-1] = v
-        if k[0:2] == 'TT':
-            second_matrix[5,int(k[2:])-1] = v
-        if k[0:2] == 'TC':
-            second_matrix[6,int(k[2:])-1] = v
-        if k[0:2] == 'TG':
-            second_matrix[7,int(k[2:])-1] = v
-        if k[0:2] == 'CA':
-            second_matrix[8,int(k[2:])-1] = v
-        if k[0:2] == 'CT':
-            second_matrix[9,int(k[2:])-1] = v
-        if k[0:2] == 'CC':
-            second_matrix[10,int(k[2:])-1] = v
-        if k[0:2] == 'CG':
-            second_matrix[11,int(k[2:])-1] = v
-        if k[0:2] == 'GA':
-            second_matrix[12,int(k[2:])-1] = v
-        if k[0:2] == 'GT':
-            second_matrix[13,int(k[2:])-1] = v
-        if k[0:2] == 'GC':
-            second_matrix[14,int(k[2:])-1] = v
-        if k[0:2] == 'GG':
-            second_matrix[15,int(k[2:])-1] = v
+        index = pairIndex[k[0:2].upper()]
+        second_matrix[index, int(k[2:])-1] = v
 
     item_gc = sequence[0][5:-5]
     gc_count = item_gc.count('G') + item_gc.count('C')
@@ -321,5 +297,3 @@ def save_dataframe_to_tmp(data):
         dataframe = dataframe.append(dataline,ignore_index=True)
     with open(tmp_file_name, 'wb') as temp_path:
         return dataframe.to_csv(temp_path)
-
-
