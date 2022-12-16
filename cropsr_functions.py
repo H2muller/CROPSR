@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
-
+import multiprocessing as mp
+import numpy as np
+from numpy import zeros, sum
+import math
+import itertools
+import re
+import pandas as pd
+import os
 
 def one_base_matrix(sequence):
     """
@@ -7,7 +14,6 @@ def one_base_matrix(sequence):
     and each row is a position along the sequence. Matrix column order is A, T/U, C, G
     """
     # Import libraries
-    from numpy import zeros
     # Function
     seq = str(sequence).upper()
     seq = list(seq)
@@ -33,7 +39,6 @@ def pairwise_matrix(sequence):
     Matrix column order is AA, AT, AC, AG, TA, TT, TC, TG, CA, CT, CC, CG, GA, GT, GC, GG
     """
     # Import libraries
-    from numpy import zeros
     # Function
     sequence = sequence.replace('U','T')
     pairwise_sequence = []
@@ -85,8 +90,6 @@ def rs1_score(sequence):
     and each row is a position along the sequence. Matrix column order is A, T/U, C, G
     """
     # Import Libraries
-    import math
-    from numpy import zeros, sum
     # Function
     """
     Scoring algorithm
@@ -193,13 +196,11 @@ def generate_dictionary(input):
     """
 
     """
-    # import libraries
-    import itertools
     # function
     dictionary = input.split()
     dictionary = dict(itertools.zip_longest(*[iter(dictionary)] * 2, fillvalue=""))
     return dictionary
-
+    # return input
 
 def location(primer, genome):
     """
@@ -223,19 +224,30 @@ def location(primer, genome):
     return primer_location
 
 
+def gendict(input):
+    """
+    """
+    # function
+    dictionary = input.split()
+    dictionary = dict(itertools.zip_longest(*[iter(dictionary)] * 2, fillvalue=""))
+    return dictionary
+
 def formatted(input_genome):
     """
     Written by: Hans Müller Paul and Joao Paulo Gomes Viana
     """
     # import libraries
-    import re
-    # function
-    formatted = re.sub('\n','',input_genome)
-    formatted = re.sub('>', '\n>',formatted)
-    formatted = formatted[1:]
-    formatted = re.sub('([0-9]+)','\\1 \n',formatted)
+    # import re
+    # # function
+    # formatted = re.sub('\n','',input_genome)
+    # formatted = re.sub('>', '\n>',formatted)
+    # formatted = formatted[1:]
+    # formatted = re.sub('([0-9]+)','\\1 \n',formatted)
+    # return formatted
+    formatted = list(filter(None,input_genome.split(">")))
+    formatted=str([tuple([x.replace("\n","") for x in item.split('\n', 1)]) for item in formatted])
+    
     return formatted
-
 
 def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█'):
     """
@@ -265,8 +277,6 @@ def parallelize(data, func):
     """
     """
     # Import Libraries
-    import multiprocessing as mp
-    import numpy as np
     # Function
     if mp.cpu_count() > 2:
         cores = mp.cpu_count()-1    # Runs in all cores except for one
@@ -286,7 +296,6 @@ def create_dataframe():
     creates a dataframe to store information
     """
     # Import Libraries
-    import pandas as pd
     # Function
     df_cols = [
                 'sequence',         # STR
@@ -306,9 +315,6 @@ def save_dataframe_to_tmp(data):
         unique_id: temporary file name suffix. 
     """
     # Import Libraries
-    import os
-    import pandas as pd
-    import numpy as np
     # Function
     tmp_dir = os.getcwd().join("/tmp_directory")
     os.makedirs(tmp_dir, mode=0o755, exist_ok=True)
@@ -321,5 +327,3 @@ def save_dataframe_to_tmp(data):
         dataframe = dataframe.append(dataline,ignore_index=True)
     with open(tmp_file_name, 'wb') as temp_path:
         return dataframe.to_csv(temp_path)
-
-
