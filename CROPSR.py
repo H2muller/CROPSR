@@ -7,8 +7,13 @@ import re
 import sys
 from multiprocessing import cpu_count, Pool
 import pandas as pd
+import numpy as np
 from numpy import vectorize
 from time import gmtime, strftime
+import random
+import string
+import csv
+import array
 
 ### CROPSR Version
 __version__ = '1.11b'
@@ -411,12 +416,29 @@ University of Illinois at Urbana-Champaign
             ''')
 
     ### Create Dataframe containing all PAM site information
-    CRIPSR_dataframe = create_dataframe()
-    CRIPSR_dataframe.to_csv(args.o, header=True, index=False, mode='w')
+    data = [
+                'crispr_id',        # STR
+                'crispr_sys',       # CAT
+                'sequence',         # STR
+                'long_sequence',    # STR
+                'chromosome',       # CAT
+                'start_pos',        # INT
+                'end_pos',          # INT
+                'cutsite',          # INT
+                'strand',           # CAT
+                'on_site_score',    # FLOAT
+                'features'          # LIST
+                ]
+
+    # Set up output CSV file
+    with open(args.o, 'w') as file:
+        writer = csv.writer(file)
+        writer.writerow(data)
+    file.close()
+    
+    Complete_dataset = []
 
     for chromosome,sequence in fasta_file.items():
-        CRIPSR_dataframe = create_dataframe()
-        Complete_dataset = []
 
         if args.cas9:
             # + strand
@@ -447,16 +469,41 @@ University of Illinois at Urbana-Champaign
                 ''')
 
 
-        lesser_list = []
-        for i,item in enumerate(Complete_dataset):
-            lesser_list.append((item))
-            if len(lesser_list) == 5000 or i == len(Complete_dataset)-1:
-                CRIPSR_dataframe['raw'] = lesser_list
-                CRIPSR_dataframe.apply(preprocess_PAM_sites,axis=1)
-                CRIPSR_dataframe.apply(fill_row,axis=1)
-                CRIPSR_dataframe.to_csv(args.o, header=False, index=False, mode='a+')
-                CRIPSR_dataframe = create_dataframe()
-                lesser_list = []
+        size = len(Complete_dataset)
+        count = 0
+
+        # Manually write to CSV
+        with open(args.o, 'a') as file:
+            writer = csv.writer(file)
+            ids = get_id(size)
+            ids= [array.array('B', map(ord,z)).tobytes().decode("utf-8") for z in ids.tolist()]
+            counter = 0
+            for i in range(size): 
+                count += 1
+                if ((count == 1000000 and i < size-1) or (count < 1000000 and i == size-1)):
+                    index_range = count*counter 
+
+                    lesser_list = Complete_dataset[index_range:index_range+count]
+
+                    sequences = [np.frombuffer(bytes(str(item[4].replace('U','T')).upper(),"ascii"), 'uint8') if len(item[4]) == 30
+                    else np.empty(30,) for item in lesser_list ]
+
+                    score = rs1_score(np.array(sequences))
+
+                    write_csv = [ (ids[index_range-index-1], lesser_list[index][5], lesser_list[index][3], lesser_list[index][4], 
+                    lesser_list[index][2], lesser_list[index][0], lesser_list[index][1], 
+                    apply_cutsite(lesser_list[index][0],lesser_list[index][1],lesser_list[index][5]), lesser_list[index][6], 
+                    score[index],'','completed') if len(lesser_list[index][4]) == 30 else 
+                    (ids[index_range-index-1], lesser_list[index][5], lesser_list[index][3], lesser_list[index][4], 
+                    lesser_list[index][2], lesser_list[index][0], lesser_list[index][1], lesser_list[index][6], -1,'','completed') 
+                    for index in range(len(lesser_list)) ]
+
+                    count = 0
+                    counter += 1
+
+                    writer.writerows(write_csv)
+
+        file.close()
 
                 
     ### CONFIRMATION MESSAGE
