@@ -329,20 +329,9 @@ def rs1_score(sequence):
     return score
 
 
-def get_id(sys_type, chr):
-    'generates a unique ID for each target site'
-    import random
-    import string
-    #  defining first digit
-    if sys_type == 'cas9':
-        first = 'A'
-    else:
-        first = '0'
-    # defining two following digits
-    second = str(chr[-2::])
-    #defining remaining sequence
-    remaining = ''.join(random.choices(string.ascii_letters + string.digits,k=7)).upper()
-    return ''.join([first, second, remaining])
+alphanum = np.array(list('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), dtype="|U1")
+def get_id(num_to_gen):
+    return np.random.choice(alphanum, [num_to_gen, 7])
 
 
 def preprocess_PAM_sites(DF):
