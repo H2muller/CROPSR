@@ -351,22 +351,6 @@ def preprocess_PAM_sites(DF):
     return DF
 
 
-def fill_row(DF):
-    from numpy import vectorize
-    DF['crispr_id'] = vectorize(get_id)(DF['crispr_sys'],DF['chromosome'])
-    if len(DF['long_sequence'])==30:
-        DF['cutsite'] = vectorize(apply_cutsite)(DF['start_pos'],DF['end_pos'],DF['crispr_sys'])
-        DF['on_site_score'] = vectorize(rs1_score)(DF['long_sequence'])
-    else:
-        DF['on_site_score'] = -1
-        start_pos = DF['start_pos']
-        end_pos = DF['end_pos']
-        chrom = DF['chromosome']
-        problem_seq = DF['long_sequence']
-        print(f'length error occurred at guide in position {start_pos} - {end_pos} of {chrom}, sequence: {problem_seq}')
-    return DF
-
-
 def main():
     if not args.cas9:
         sys.exit('Please select at least one CRISPR system: Cas9') 
@@ -472,7 +456,7 @@ University of Illinois at Urbana-Champaign
         size = len(Complete_dataset)
         count = 0
 
-        # Manually write to CSV
+        # Score sequences, fill rows, and manually write to CSV
         with open(args.o, 'a') as file:
             writer = csv.writer(file)
             ids = get_id(size)
