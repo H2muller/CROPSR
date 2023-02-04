@@ -111,10 +111,7 @@ def get_reverse_complement(input_sequence):
     '''
     converts a DNA sequence to its reverse complement
     '''
-    complement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
-    bases = list(input_sequence)
-    bases = reversed([complement.get(base, base) for base in bases])
-    bases = ''.join(bases)
+    bases = input_sequence.replace('A','U').replace('C','Z').replace('G','C').replace('Z','G').replace('T','A').replace('U','T')[::-1]
     return bases
 
 
@@ -122,10 +119,7 @@ def get_gRNA_sequence(input_sequence):
     '''
     converts a DNA sequence to its complimentary RNA sequence
     '''
-    complement = {'A': 'U', 'C': 'G', 'G': 'C', 'T': 'A'}
-    RNA = list(input_sequence)
-    RNA = reversed([complement.get(base, base) for base in RNA])
-    RNA = ''.join(RNA)
+    RNA = input_sequence.replace('A','U').replace('C','Z').replace('G','C').replace('Z','G').replace('T','A')[::-1]
     return RNA
 
 
