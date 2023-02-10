@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
-
+import multiprocessing as mp
+import numpy as np
+from numpy import zeros, sum
+import math
+import itertools
+import re
+import pandas as pd
+import os
 
 def one_base_matrix(sequence):
     """
     Generates a binary matrix for DNA/RNA sequence, where each column is a possible base
     and each row is a position along the sequence. Matrix column order is A, T/U, C, G
     """
-    # Import libraries
-    from numpy import zeros
-    # Function
     seq = str(sequence).upper()
     seq = list(seq)
     matrix = zeros([len(sequence),4], dtype=int)
@@ -32,9 +36,6 @@ def pairwise_matrix(sequence):
     pair of adjacent bases, and each row is a position along the sequence.
     Matrix column order is AA, AT, AC, AG, TA, TT, TC, TG, CA, CT, CC, CG, GA, GT, GC, GG
     """
-    # Import libraries
-    from numpy import zeros
-    # Function
     sequence = sequence.replace('U','T')
     pairwise_sequence = []
     for i in range(len(sequence)):
@@ -84,10 +85,7 @@ def rs1_score(sequence):
     Generates a binary matrix for DNA/RNA sequence, where each column is a possible base
     and each row is a position along the sequence. Matrix column order is A, T/U, C, G
     """
-    # Import Libraries
-    import math
-    from numpy import zeros, sum
-    # Function
+
     """
     Scoring algorithm
     """
@@ -193,9 +191,6 @@ def generate_dictionary(input):
     """
 
     """
-    # import libraries
-    import itertools
-    # function
     dictionary = input.split()
     dictionary = dict(itertools.zip_longest(*[iter(dictionary)] * 2, fillvalue=""))
     return dictionary
@@ -226,14 +221,11 @@ def location(primer, genome):
 def formatted(input_genome):
     """
     Written by: Hans Müller Paul and Joao Paulo Gomes Viana
+    Optimized by: Amulya Khurana, Cecilio C. Tamarit, Socrates Wong
     """
-    # import libraries
-    import re
-    # function
-    formatted = re.sub('\n','',input_genome)
-    formatted = re.sub('>', '\n>',formatted)
-    formatted = formatted[1:]
-    formatted = re.sub('([0-9]+)','\\1 \n',formatted)
+    formatted = list(filter(None,input_genome.split(">")))
+    formatted = str([tuple([x.replace("\n","") for x in item.split('\n', 1)]) for item in formatted])
+    
     return formatted
 
 
@@ -285,9 +277,6 @@ def create_dataframe():
     """
     creates a dataframe to store information
     """
-    # Import Libraries
-    import pandas as pd
-    # Function
     df_cols = [
                 'sequence',         # STR
                 'on_site_score'    # FLOAT

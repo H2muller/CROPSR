@@ -7,8 +7,13 @@ import re
 import sys
 from multiprocessing import cpu_count, Pool
 import pandas as pd
+import numpy as np
 from numpy import vectorize
 from time import gmtime, strftime
+import random
+import string
+import csv
+import array
 
 ### CROPSR Version
 __version__ = '1.11b'
@@ -111,10 +116,7 @@ def get_reverse_complement(input_sequence):
     '''
     converts a DNA sequence to its reverse complement
     '''
-    complement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
-    bases = list(input_sequence)
-    bases = reversed([complement.get(base, base) for base in bases])
-    bases = ''.join(bases)
+    bases = input_sequence.replace('A','U').replace('C','Z').replace('G','C').replace('Z','G').replace('T','A').replace('U','T')[::-1]
     return bases
 
 
@@ -122,10 +124,7 @@ def get_gRNA_sequence(input_sequence):
     '''
     converts a DNA sequence to its complimentary RNA sequence
     '''
-    complement = {'A': 'U', 'C': 'G', 'G': 'C', 'T': 'A'}
-    RNA = list(input_sequence)
-    RNA = reversed([complement.get(base, base) for base in RNA])
-    RNA = ''.join(RNA)
+    RNA = input_sequence.replace('A','U').replace('C','Z').replace('G','C').replace('Z','G').replace('T','A')[::-1]
     return RNA
 
 
@@ -157,198 +156,164 @@ def apply_cutsite(start_pos, end_pos, crispr_sys):
     return cutsite
 
 
-def rs1_score(sequence):
-    """
-    Generates a binary matrix for DNA/RNA sequence, where each column is a possible base
-    and each row is a position along the sequence. Matrix column order is A, T/U, C, G
-    """
-    import math
-    import numpy as np
-    seq = str(sequence).upper()
-    seq = list(seq)
-    matrix1  = np.zeros([len(sequence),4], dtype=int)
-    for i,item in enumerate(sequence):
-        if item == 'A':
-            matrix1[i,0] = 1
-        if item == 'T':
-            matrix1[i,1] = 1
-        if item == 'U':
-            matrix1[i,1] = 1
-        if item == 'C':
-            matrix1[i,2] = 1
-        if item == 'G':
-            matrix1[i,3] = 1
+intersect = 0.59763615
+low_gc = -0.2026259
+high_gc = -0.1665878
+
+first_matrix = np.array([ 0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        , -0.2753771 , -0.3238875 ,  0.        ,
+        0.17212887,  0.        ,  0.        ,  0.        , -0.1006662 ,
+        0.        ,  0.        ,  0.        , -0.2018029 ,  0.24595663,
+        0.03644004,  0.        ,  0.09837684,  0.        ,  0.        ,
+        0.        , -0.7411813 , -0.3932644 ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        , -0.466099  ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.08537695,  0.        , -0.013814  ,  0.        ,
+        0.27262051, -0.2859442 ,  0.1190226 ,  0.        ,  0.09745459,
+        0.        ,  0.        , -0.1755462 ,  0.        ,  0.        ,
+       -0.3457955 , -0.6780964 ,  0.22508903,  0.        , -0.5077941 ,
+        0.        ,  0.        , -0.054307  ,  0.        , -0.4173736 ,
+        0.        , -0.0907126 ,  0.        ,  0.37989937,  0.        ,
+       -0.5305673 ,  0.05782332,  0.        ,  0.        , -0.8770074 ,
+        0.        ,  0.        ,  0.        , -0.4031022 , -0.8762358 ,
+        0.27891626, -0.0773007 , -0.2216372 ,  0.28793562,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.11787758,
+        0.        , -0.6890167 ,  0.        ,  0.        , -0.1604453,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.38634258 ])
+
+second_matrix = np.array([  
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        , -0.6257787 ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.30004332,  0.        ,
+       -0.8348362 ,  0.        ,  0.        ,  0.        ,  0.76062777,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        , -0.4908167 ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.7092612 , -0.5868739 ,  0.49629861,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        , -1.5169074 ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        , -0.3345637 ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.76384993,  0.        , -0.5370252 ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        , -0.7981461 ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.35318325,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        , -0.6668087 ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        , -0.3672668 ,  0.        ,  0.        ,  0.74807209,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.56820913,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.32907207, -0.8364568 ,  0.        ,  0.        ,
+       -0.7822076 ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        , -1.029693  ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        , -0.4632077 ,  0.        ,  0.85619782,  0.        ,
+        0.        ,  0.        ,  0.        , -0.5794924 ,  0.        ,
+        0.        ,  0.64907554,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        , -0.0773007 ,  0.        ,  0.        ,
+        0.        , -0.2216372 ,  0.        ,  0.        ,  0.        ,
+        0.28793562,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.11787758,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        , -0.69774   ])
+
+def rs1_score(sequences):
+
+    size = len(sequences)
+    seq1 = sequences[:,0:29]
+    seq2 = sequences[:,1:30]
+
+    sequences = np.repeat(sequences,4,axis=1)
+    seq1 = np.repeat(seq1,16,axis=1)
+    seq2 = np.repeat(seq2,16,axis=1)
+
+    matrix1 = np.empty((size,120))
+    matrix2 = np.empty((size,464))
+    temp1 = np.empty((size,464))
+    temp2 = np.empty((size,464))
+
+    matrix_1_cmp = np.array([[65, 84, 67, 71]*30])
+    matrix_2_cmp1 = np.array([[65,65,65,65,84,84,84,84,67,67,67,67,71,71,71,71]*29])
+    matrix_2_cmp2 = np.array([[65,84,67,71,65,84,67,71,65,84,67,71,65,84,67,71]*29])
+
+    np.equal(sequences,matrix_1_cmp,out=matrix1)
+    score_first = np.matmul(matrix1,first_matrix)
+
+    np.equal(seq1,matrix_2_cmp1,out=temp1)
+    np.equal(seq2,matrix_2_cmp2,out=temp2)
+    np.logical_and(temp1,temp2,out=matrix2)
+
+    score_second = np.matmul(matrix2,second_matrix)
+    score = (score_first + score_second + intersect + low_gc) * -1
+    return 1/(1 + np.exp(score))
 
 
-    """
-    Generates a binary matrix for DNA/RNA sequence, where each column is a possible
-    pair of adjacent bases, and each row is a position along the sequence.
-    Matrix column order is AA, AT, AC, AG, TA, TT, TC, TG, CA, CT, CC, CG, GA, GT, GC, GG
-    """
-    sequence = sequence.replace('U','T')
-    pairwise_sequence = []
-    for i in range(len(sequence)):
-        if i < len(sequence)-1:
-            basepair = sequence[i]+sequence[i+1]
-            pairwise_sequence.append(basepair)
-    matrix2 = np.zeros([len(pairwise_sequence),16], dtype=int)
-    for i,item in enumerate(pairwise_sequence):
-        if item == 'AA':
-            matrix2[i,0] = 1
-        if item == 'AT':
-            matrix2[i,1] = 1
-        if item == 'AC':
-            matrix2[i,2] = 1
-        if item == 'AG':
-            matrix2[i,3] = 1
-        if item == 'TA':
-            matrix2[i,4] = 1
-        if item == 'TT':
-            matrix2[i,5] = 1
-        if item == 'TC':
-            matrix2[i,6] = 1
-        if item == 'TG':
-            matrix2[i,7] = 1
-        if item == 'CA':
-            matrix2[i,8] = 1
-        if item == 'CT':
-            matrix2[i,9] = 1
-        if item == 'CC':
-            matrix2[i,10] = 1
-        if item == 'CG':
-            matrix2[i,11] = 1
-        if item == 'GA':
-            matrix2[i,12] = 1
-        if item == 'GT':
-            matrix2[i,13] = 1
-        if item == 'GC':
-            matrix2[i,14] = 1
-        if item == 'GG':
-            matrix2[i,15] = 1
-
-
-    """
-    Scoring matrix
-    """
-    intersect = 0.59763615
-    low_gc = -0.2026259
-    high_gc = -0.1665878
-
-    first_order = ['G02','A03','C03','C04','C05',
-                    'G05','A06','C06','C07','G07',
-                    'A12','A15','C15','A16','C16',
-                    'T16','A17','G17','C18','G18',
-                    'A19','C19','G20','T20','G21',
-                    'T21','C22','T22','T23','C24',
-                    'G24','T24','A25','C25','T25',
-                    'G28','T28','C29','G30']
-    first_scores = [-0.2753771,-0.3238875,0.17212887,-0.1006662,-0.2018029,
-                    0.24595663,0.03644004,0.09837684,-0.7411813,-0.3932644,
-                    -0.466099,0.08537695,-0.013814,0.27262051,0.1190226,
-                    -0.2859442,0.09745459,-0.1755462,-0.3457955,-0.6780964,
-                    0.22508903,-0.5077941,-0.4173736,-0.054307,0.37989937,
-                    -0.0907126,0.05782332,-0.5305673,-0.8770074,-0.8762358,
-                    0.27891626,-0.4031022,-0.0773007,0.28793562,-0.2216372,
-                    -0.6890167,0.11787758,-0.1604453,0.38634258]
-    first_order_scores = dict(zip(first_order,first_scores))
-
-    second_order = ['GT02','GC05','AA06','TA06','GG07',
-                    'GG12','TA12','TC12','TT12','GG13',
-                    'GA14','GC14','TG17','GG19','TC19',
-                    'CC20','TG20','AC21','CG21','GA21',
-                    'GG21','TC22','CG23','CT23','AA24',
-                    'AG24','AG25','CG25','TG25','GT27',
-                    'GG29']
-    second_scores = [-0.6257787,0.30004332,-0.8348362,0.76062777,-0.4908167,
-                    -1.5169074,0.7092612,0.49629861,-0.5868739,-0.3345637,
-                    0.76384993,-0.5370252,-0.7981461,-0.6668087,0.35318325,
-                    0.74807209,-0.3672668,0.56820913,0.32907207,-0.8364568,
-                    -0.7822076,-1.029693,0.85619782,-0.4632077,-0.5794924,
-                    0.64907554,-0.0773007,0.28793562,-0.2216372,0.11787758,
-                    -0.69774]
-    second_order_scores = dict(zip(second_order,second_scores))
-
-
-    # order 1 score matrix
-    """ row order == A T/U C G """
-    first_matrix = np.zeros([4,30], dtype=float)
-    def posit(key):
-        return int(key[1:])-1
-    for k,v in first_order_scores.items():
-        if k[0] == 'A':
-            first_matrix[0,posit(k)] = v
-        elif k[0] == 'T':
-            first_matrix[1,posit(k)] = v
-        elif k[0] == 'C':
-            first_matrix[2,posit(k)] = v
-        elif k[0] == 'G':
-            first_matrix[3,posit(k)] = v
-
-
-    # order 2 score matrix
-    """ row order == AA AT AC AG TA TT TC TG CA CT CC CG GA GT GC GG """
-    second_matrix = np.zeros([16,29], dtype=float)
-    for k,v in second_order_scores.items():
-        if k[0:2] == 'AA':
-            second_matrix[0,int(k[2:])-1] = v
-        if k[0:2] == 'AT':
-            second_matrix[1,int(k[2:])-1] = v
-        if k[0:2] == 'AC':
-            second_matrix[2,int(k[2:])-1] = v
-        if k[0:2] == 'AG':
-            second_matrix[3,int(k[2:])-1] = v
-        if k[0:2] == 'TA':
-            second_matrix[4,int(k[2:])-1] = v
-        if k[0:2] == 'TT':
-            second_matrix[5,int(k[2:])-1] = v
-        if k[0:2] == 'TC':
-            second_matrix[6,int(k[2:])-1] = v
-        if k[0:2] == 'TG':
-            second_matrix[7,int(k[2:])-1] = v
-        if k[0:2] == 'CA':
-            second_matrix[8,int(k[2:])-1] = v
-        if k[0:2] == 'CT':
-            second_matrix[9,int(k[2:])-1] = v
-        if k[0:2] == 'CC':
-            second_matrix[10,int(k[2:])-1] = v
-        if k[0:2] == 'CG':
-            second_matrix[11,int(k[2:])-1] = v
-        if k[0:2] == 'GA':
-            second_matrix[12,int(k[2:])-1] = v
-        if k[0:2] == 'GT':
-            second_matrix[13,int(k[2:])-1] = v
-        if k[0:2] == 'GC':
-            second_matrix[14,int(k[2:])-1] = v
-        if k[0:2] == 'GG':
-            second_matrix[15,int(k[2:])-1] = v
-
-    item_gc = sequence[0][5:-5]
-    gc_count = item_gc.count('G') + item_gc.count('C')
-    if gc_count < 10:
-        gc_score = low_gc
-    else:
-        gc_score = high_gc
-    first_first = np.matmul(first_matrix,matrix1)
-    score_first = np.trace(first_first)
-    score_second = np.trace(np.matmul(second_matrix,matrix2))
-    score = (1/(1 + math.exp(-(intersect + gc_score + score_first + score_second))))
-    return score
-
-
-def get_id(sys_type, chr):
-    'generates a unique ID for each target site'
-    import random
-    import string
-    #  defining first digit
-    if sys_type == 'cas9':
-        first = 'A'
-    else:
-        first = '0'
-    # defining two following digits
-    second = str(chr[-2::])
-    #defining remaining sequence
-    remaining = ''.join(random.choices(string.ascii_letters + string.digits,k=7)).upper()
-    return ''.join([first, second, remaining])
+alphanum = np.array(list('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), dtype="|U1")
+def get_id(num_to_gen):
+    return np.random.choice(alphanum, [num_to_gen, 7])
 
 
 def preprocess_PAM_sites(DF):
@@ -360,22 +325,6 @@ def preprocess_PAM_sites(DF):
     DF['end_pos'] = DF['raw'][1]
     DF['strand'] = DF['raw'][6]
     DF['raw'] = 'completed'
-    return DF
-
-
-def fill_row(DF):
-    from numpy import vectorize
-    DF['crispr_id'] = vectorize(get_id)(DF['crispr_sys'],DF['chromosome'])
-    if len(DF['long_sequence'])==30:
-        DF['cutsite'] = vectorize(apply_cutsite)(DF['start_pos'],DF['end_pos'],DF['crispr_sys'])
-        DF['on_site_score'] = vectorize(rs1_score)(DF['long_sequence'])
-    else:
-        DF['on_site_score'] = -1
-        start_pos = DF['start_pos']
-        end_pos = DF['end_pos']
-        chrom = DF['chromosome']
-        problem_seq = DF['long_sequence']
-        print(f'length error occurred at guide in position {start_pos} - {end_pos} of {chrom}, sequence: {problem_seq}')
     return DF
 
 
@@ -428,12 +377,29 @@ University of Illinois at Urbana-Champaign
             ''')
 
     ### Create Dataframe containing all PAM site information
-    CRIPSR_dataframe = create_dataframe()
-    CRIPSR_dataframe.to_csv(args.o, header=True, index=False, mode='w')
+    data = [
+                'crispr_id',        # STR
+                'crispr_sys',       # CAT
+                'sequence',         # STR
+                'long_sequence',    # STR
+                'chromosome',       # CAT
+                'start_pos',        # INT
+                'end_pos',          # INT
+                'cutsite',          # INT
+                'strand',           # CAT
+                'on_site_score',    # FLOAT
+                'features'          # LIST
+                ]
+
+    # Set up output CSV file
+    with open(args.o, 'w') as file:
+        writer = csv.writer(file)
+        writer.writerow(data)
+    file.close()
+    
+    Complete_dataset = []
 
     for chromosome,sequence in fasta_file.items():
-        CRIPSR_dataframe = create_dataframe()
-        Complete_dataset = []
 
         if args.cas9:
             # + strand
@@ -464,16 +430,41 @@ University of Illinois at Urbana-Champaign
                 ''')
 
 
-        lesser_list = []
-        for i,item in enumerate(Complete_dataset):
-            lesser_list.append((item))
-            if len(lesser_list) == 5000 or i == len(Complete_dataset)-1:
-                CRIPSR_dataframe['raw'] = lesser_list
-                CRIPSR_dataframe.apply(preprocess_PAM_sites,axis=1)
-                CRIPSR_dataframe.apply(fill_row,axis=1)
-                CRIPSR_dataframe.to_csv(args.o, header=False, index=False, mode='a+')
-                CRIPSR_dataframe = create_dataframe()
-                lesser_list = []
+        size = len(Complete_dataset)
+        count = 0
+
+        # Score sequences, fill rows, and manually write to CSV
+        with open(args.o, 'a') as file:
+            writer = csv.writer(file)
+            ids = get_id(size)
+            ids= [array.array('B', map(ord,z)).tobytes().decode("utf-8") for z in ids.tolist()]
+            counter = 0
+            for i in range(size): 
+                count += 1
+                if ((count == 1000000 and i < size-1) or (count < 1000000 and i == size-1)):
+                    index_range = count*counter 
+
+                    lesser_list = Complete_dataset[index_range:index_range+count]
+
+                    sequences = [np.frombuffer(bytes(str(item[4].replace('U','T')).upper(),"ascii"), 'uint8') if len(item[4]) == 30
+                    else np.empty(30,) for item in lesser_list ]
+
+                    score = rs1_score(np.array(sequences))
+
+                    write_csv = [ (ids[index_range-index-1], lesser_list[index][5], lesser_list[index][3], lesser_list[index][4], 
+                    lesser_list[index][2], lesser_list[index][0], lesser_list[index][1], 
+                    apply_cutsite(lesser_list[index][0],lesser_list[index][1],lesser_list[index][5]), lesser_list[index][6], 
+                    score[index],'','completed') if len(lesser_list[index][4]) == 30 else 
+                    (ids[index_range-index-1], lesser_list[index][5], lesser_list[index][3], lesser_list[index][4], 
+                    lesser_list[index][2], lesser_list[index][0], lesser_list[index][1], lesser_list[index][6], -1,'','completed') 
+                    for index in range(len(lesser_list)) ]
+
+                    count = 0
+                    counter += 1
+
+                    writer.writerows(write_csv)
+
+        file.close()
 
                 
     ### CONFIRMATION MESSAGE
