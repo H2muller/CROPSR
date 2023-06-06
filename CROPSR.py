@@ -146,9 +146,7 @@ def create_dataframe():
                 'strand',           # CAT
                 'on_site_score',    # FLOAT
                 'features',         # LIST
-                #+                'features',         # LIST
-                #+                'raw'               # STR
-                'raw'               # STR
+                'status'               # STR
                 ]
     df = pd.DataFrame(columns=df_cols)
     return df
@@ -328,7 +326,7 @@ def preprocess_PAM_sites(DF):
     DF['start_pos'] = DF['raw'][0]
     DF['end_pos'] = DF['raw'][1]
     DF['strand'] = DF['raw'][6]
-    DF['raw'] = 'completed'
+    DF['status'] = 'completed'
     return DF
 
 
@@ -396,8 +394,8 @@ University of Illinois at Urbana-Champaign
                 'cutsite',          # INT
                 'strand',           # CAT
                 'on_site_score',    # FLOAT
-                'features'          # LIST
-                'raw', # STR
+                'features',          # LIST
+                'status', # STR
                 ]
 
     # Set up output CSV file
