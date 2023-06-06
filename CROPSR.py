@@ -14,6 +14,7 @@ import random
 import string
 import csv
 import array
+import time
 
 ### CROPSR Version
 __version__ = '1.11b'
@@ -144,7 +145,10 @@ def create_dataframe():
                 'cutsite',          # INT
                 'strand',           # CAT
                 'on_site_score',    # FLOAT
-                'features'          # LIST
+                'features',         # LIST
+                #+                'features',         # LIST
+                #+                'raw'               # STR
+                'raw'               # STR
                 ]
     df = pd.DataFrame(columns=df_cols)
     return df
@@ -329,6 +333,7 @@ def preprocess_PAM_sites(DF):
 
 
 def main():
+    begin = time.time()
     if not args.cas9:
         sys.exit('Please select at least one CRISPR system: Cas9') 
     
@@ -364,6 +369,9 @@ University of Illinois at Urbana-Champaign
         """)
 
 
+    # Set up timing
+    file1 = open("time.txt","w")
+
     ### Import genome files
     fasta_file = import_fasta_file(args.f)
     gff_df = import_gff_file(args.g)
@@ -389,6 +397,7 @@ University of Illinois at Urbana-Champaign
                 'strand',           # CAT
                 'on_site_score',    # FLOAT
                 'features'          # LIST
+                'raw', # STR
                 ]
 
     # Set up output CSV file
@@ -400,13 +409,15 @@ University of Illinois at Urbana-Champaign
     Complete_dataset = []
 
     for chromosome,sequence in fasta_file.items():
+        print("Searching on Chromosome: ", chromosome[:25])
+        print("With start of sequence: ", sequence[:25])
 
         if args.cas9:
             # + strand
             motif = re.compile(r'(?=.GG)')
             cas9_target_list = find_PAM_site(motif,sequence)
             for target in cas9_target_list:
-                pam_location = (target[0]-(args.l+1),target[0]-1)
+                pam_location = pam_location = (target[0]-args.l, target[0]) # Updated Regex for proper PAM Site alignment
                 if pam_location[0] >= 5 and pam_location[0]+5 <= len(sequence)+10 and pam_location[1] >= 5 and pam_location[1] <= len(sequence)+10:
                     shortseq = get_gRNA_sequence(sequence[pam_location[0]:pam_location[1]])
                     longseq = get_gRNA_sequence(sequence[pam_location[0]-5:pam_location[1]+5])
@@ -417,7 +428,7 @@ University of Illinois at Urbana-Champaign
             motif = re.compile(r'(?=CC.)')
             cas9_target_list2 = find_PAM_site(motif,sequence)
             for target in cas9_target_list2:
-                pam_location = (target[0]+1,target[0]+(args.l+1))
+                pam_location = (target[0]+3, target[0]+3+args.l) # Updated Regex for proper PAM Site alignment
                 if pam_location[0] >= 5 and pam_location[0]+5 <= len(sequence)+10 and pam_location[1] >= 5 and pam_location[1] <= len(sequence)+10:
                     shortseq = get_gRNA_sequence(get_reverse_complement(sequence[pam_location[0]:pam_location[1]]))
                     longseq = get_gRNA_sequence(get_reverse_complement(sequence[pam_location[0]-5:pam_location[1]+5]))
@@ -463,6 +474,11 @@ University of Illinois at Urbana-Champaign
                     counter += 1
 
                     writer.writerows(write_csv)
+
+        end = time.time()
+        file1.write("Total runtime of the program is " + str(end-begin))
+        time.sleep(5)
+        #file1.close()
 
         file.close()
 
