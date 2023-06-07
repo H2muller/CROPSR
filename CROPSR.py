@@ -415,7 +415,7 @@ University of Illinois at Urbana-Champaign
             motif = re.compile(r'(?=.GG)')
             cas9_target_list = find_PAM_site(motif,sequence)
             for target in cas9_target_list:
-                pam_location = pam_location = (target[0]-args.l, target[0]) # Updated Regex for proper PAM Site alignment
+                pam_location = (target[0]-args.l, target[0]) # Updated Regex for proper PAM Site alignment
                 if pam_location[0] >= 5 and pam_location[0]+5 <= len(sequence)+10 and pam_location[1] >= 5 and pam_location[1] <= len(sequence)+10:
                     shortseq = get_gRNA_sequence(sequence[pam_location[0]:pam_location[1]])
                     longseq = get_gRNA_sequence(sequence[pam_location[0]-5:pam_location[1]+5])
