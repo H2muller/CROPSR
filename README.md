@@ -148,7 +148,7 @@ CROPSR outputs a CSV (comma separated values) file by default. This file type wa
 
 <b> Invalid/Unactionable gRNA Sequences </b>
 
-In the case that an invalid/unactionable gRNA sequence is generated from the genome FASTA file (i.e. possibly due to sequencing inaccuracies) the sequence will be stored in the output file with an "on_site_score" of -1, such that they can be referenced by the user if desired, but will be excluded from the candidate gRNA database if the user queries limiting (0 ≤ on_site_score ≤ 1).
+In the case that an invalid/unactionable gRNA sequence is generated from the genome FASTA file (i.e. possibly due to sequencing inaccuracies) the sequence will be stored in the output file with an "on_site_score" of -1, such that these sequences can be referenced by the user if desired, but will be excluded from the candidate gRNA database if the user queries limiting (0 ≤ on_site_score ≤ 1).
 
 
 #### [Back to top](#)
