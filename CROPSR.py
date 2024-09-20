@@ -151,12 +151,13 @@ def create_dataframe():
     df = pd.DataFrame(columns=df_cols)
     return df
 
-
-def apply_cutsite(start_pos, end_pos, crispr_sys):
+def apply_cutsite(start_pos, end_pos, crispr_sys,strand):
     if crispr_sys == 'cas9':
-        cutsite = end_pos-3
+        if strand == 'neg':
+            cutsite = start_pos+3
+        else:
+            cutsite = end_pos-3
     return cutsite
-
 
 intersect = 0.59763615
 low_gc = -0.2026259
@@ -392,9 +393,9 @@ University of Illinois at Urbana-Champaign
                 'start_pos',        # INT
                 'end_pos',          # INT
                 'cutsite',          # INT
+                'PAM_sequence',      # STR
                 'strand',           # CAT
                 'on_site_score',    # FLOAT
-                'features',          # LIST
                 'status', # STR
                 ]
 
@@ -415,22 +416,24 @@ University of Illinois at Urbana-Champaign
             motif = re.compile(r'(?=.GG)')
             cas9_target_list = find_PAM_site(motif,sequence)
             for target in cas9_target_list:
-                pam_location = (target[0]-args.l, target[0]) # Updated Regex for proper PAM Site alignment
+                pam_location = (target[0]-(args.l), target[0]) # Updated Regex for proper PAM Site alignment
                 if pam_location[0] >= 5 and pam_location[0]+5 <= len(sequence)+10 and pam_location[1] >= 5 and pam_location[1] <= len(sequence)+10:
-                    shortseq = get_gRNA_sequence(sequence[pam_location[0]:pam_location[1]])
-                    longseq = get_gRNA_sequence(sequence[pam_location[0]-5:pam_location[1]+5])
-                    crispr_guide = [pam_location[0],pam_location[1],chromosome[1::],shortseq,longseq,'cas9','+']
+                    shortseq = sequence[pam_location[0]:pam_location[1]]
+                    longseq = sequence[pam_location[0]-5:pam_location[1]+5]
+                    cutsite= apply_cutsite(pam_location[0],pam_location[1],'cas9','pos')
+                    crispr_guide = [pam_location[0],pam_location[1],chromosome[1::],cutsite,longseq[25:28],shortseq,longseq,'cas9','+']
                     Complete_dataset.append(crispr_guide)
 
             # - strand
             motif = re.compile(r'(?=CC.)')
             cas9_target_list2 = find_PAM_site(motif,sequence)
             for target in cas9_target_list2:
-                pam_location = (target[0]+3, target[0]+3+args.l) # Updated Regex for proper PAM Site alignment
+                pam_location = (target[0]+3, target[0]+args.l+3) # Updated Regex for proper PAM Site alignment
                 if pam_location[0] >= 5 and pam_location[0]+5 <= len(sequence)+10 and pam_location[1] >= 5 and pam_location[1] <= len(sequence)+10:
-                    shortseq = get_gRNA_sequence(get_reverse_complement(sequence[pam_location[0]:pam_location[1]]))
-                    longseq = get_gRNA_sequence(get_reverse_complement(sequence[pam_location[0]-5:pam_location[1]+5]))
-                    crispr_guide = [pam_location[1],pam_location[0],chromosome[1::],shortseq,longseq,'cas9','-']
+                    shortseq = get_reverse_complement(sequence[pam_location[0]:pam_location[1]])
+                    longseq = get_reverse_complement(sequence[pam_location[0]-5:pam_location[1]+5])
+                    cutsite=apply_cutsite(pam_location[0],pam_location[1],'cas9','neg')
+                    crispr_guide = [pam_location[0],pam_location[1],chromosome[1::],cutsite,longseq[25:28],shortseq,longseq,'cas9','-']
                     Complete_dataset.append(crispr_guide)
 
             if args.verbose:
@@ -455,17 +458,18 @@ University of Illinois at Urbana-Champaign
 
                     lesser_list = Complete_dataset[index_range:index_range+count]
 
-                    sequences = [np.frombuffer(bytes(str(item[4].replace('U','T')).upper(),"ascii"), 'uint8') if len(item[4]) == 30
+                    seqs = [str(get_gRNA_sequence(get_reverse_complement(item[6])).replace('U','T')).upper() for item in lesser_list]
+
+                    sequences = [np.frombuffer(bytes(str(get_gRNA_sequence(get_reverse_complement(item[6])).replace('U','T')).upper(),"ascii"), 'uint8') if len(item[6]) == 30
                     else np.empty(30,) for item in lesser_list ]
 
                     score = rs1_score(np.array(sequences))
 
-                    write_csv = [ (ids[index_range-index-1], lesser_list[index][5], lesser_list[index][3], lesser_list[index][4], 
-                    lesser_list[index][2], lesser_list[index][0], lesser_list[index][1], 
-                    apply_cutsite(lesser_list[index][0],lesser_list[index][1],lesser_list[index][5]), lesser_list[index][6], 
-                    score[index],'','completed') if len(lesser_list[index][4]) == 30 else 
+                    write_csv = [ (ids[index_range-index-1], lesser_list[index][7], lesser_list[index][5], lesser_list[index][6], 
+                    lesser_list[index][2], lesser_list[index][0], lesser_list[index][1], lesser_list[index][3], lesser_list[index][4], lesser_list[index][8],
+                    score[index],'completed') if len(lesser_list[index][6]) == 30 else 
                     (ids[index_range-index-1], lesser_list[index][5], lesser_list[index][3], lesser_list[index][4], 
-                    lesser_list[index][2], lesser_list[index][0], lesser_list[index][1], lesser_list[index][6], -1,'','completed') 
+                    lesser_list[index][2], lesser_list[index][0], lesser_list[index][1], lesser_list[index][6], -1,'completed') 
                     for index in range(len(lesser_list)) ]
 
                     count = 0
@@ -476,7 +480,6 @@ University of Illinois at Urbana-Champaign
         end = time.time()
         file1.write("Total runtime of the program is " + str(end-begin))
         time.sleep(5)
-        #file1.close()
 
         file.close()
 
